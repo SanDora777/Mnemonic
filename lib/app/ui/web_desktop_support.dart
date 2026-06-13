@@ -1,6 +1,39 @@
 part of 'package:flutter_application_1/recovered_app.dart';
 
 /// Платформы, где ожидается физическая клавиатура (веб на ноутбуке, десктоп).
+bool isWebDesktopLayout(BuildContext context) {
+  return kIsWeb && MediaQuery.sizeOf(context).width >= 700;
+}
+
+double webMainMenuMaxWidth(BuildContext context) {
+  if (!isWebDesktopLayout(context)) return double.infinity;
+  final w = MediaQuery.sizeOf(context).width;
+  if (w >= 1200) return 480;
+  if (w >= 900) return 440;
+  return 400;
+}
+
+/// Верхнее выравнивание вместо [Center] — контент не прыгает при смене фазы.
+Widget webTrainerViewport({
+  required BuildContext context,
+  required Widget child,
+  double topPadding = 0,
+  double bottomReserve = 0,
+}) {
+  return Align(
+    alignment: Alignment.topCenter,
+    child: Padding(
+      padding: EdgeInsets.only(
+        top: topPadding,
+        bottom: bottomReserve,
+        left: 12,
+        right: 12,
+      ),
+      child: child,
+    ),
+  );
+}
+
 bool trainerKeyboardShortcutsEnabled(BuildContext context) {
   if (defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.macOS ||
@@ -70,9 +103,9 @@ String trainerKeyboardHintText({
   }
   if (memorizing) {
     return AppTexts.translate(const {
-      AppLanguage.ru: '← → чанки · ↑ ↓ прокрутка · Home — в начало · Пробел — вспоминание',
-      AppLanguage.en: '← → chunks · ↑ ↓ scroll · Home — first · Space — recall',
-      AppLanguage.de: '← → Chunks · ↑ ↓ scrollen · Pos1 — Anfang · Leertaste — Abruf',
+      AppLanguage.ru: 'Пробел — следующий чанк (в конце → вспоминание) · ← → листать · Enter — сразу к вспоминанию',
+      AppLanguage.en: 'Space — next chunk (last → recall) · ← → navigate · Enter — recall now',
+      AppLanguage.de: 'Leertaste — nächster Chunk · ← → blättern · Enter — sofort Abruf',
     });
   }
   return '';
@@ -150,9 +183,11 @@ bool handleTrainerMemorizeKeyDown({
     onFirst();
     return true;
   }
-  if (key == LogicalKeyboardKey.enter ||
-      key == LogicalKeyboardKey.numpadEnter ||
-      key == LogicalKeyboardKey.space) {
+  if (key == LogicalKeyboardKey.space) {
+    onNext();
+    return true;
+  }
+  if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
     onRecallNow();
     return true;
   }

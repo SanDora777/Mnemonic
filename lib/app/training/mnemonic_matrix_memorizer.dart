@@ -99,7 +99,7 @@ class _MnemonicMatrixMemorizerState extends State<MnemonicMatrixMemorizer> {
         final metrics = matrixGridMetrics(constraints.maxWidth);
 
         return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             GestureDetector(
               behavior: HitTestBehavior.opaque,

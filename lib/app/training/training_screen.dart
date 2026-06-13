@@ -2485,7 +2485,20 @@ class _TrainingScreenState extends State<TrainingScreen> {
       trainerBody = _buildDuelCountdown(onSurface, accent);
     } else {
       trainerBody = AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        layoutBuilder: (currentChild, previousChildren) {
+          return Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              ...previousChildren,
+              if (currentChild != null) currentChild,
+            ],
+          );
+        },
         child: _isSettingsMode
             ? _buildSettings(key: const ValueKey('settings'))
             : (_isMemorizing
@@ -2558,15 +2571,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   ),
                 ),
               ),
-            Center(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  top: _isDuelRun && !showDuelCountdown
-                      ? (_duelSubmitted ? 108 : 72)
-                      : 0,
-                ),
-                child: trainerBody,
-              ),
+            webTrainerViewport(
+              context: context,
+              topPadding: _isDuelRun && !showDuelCountdown
+                  ? (_duelSubmitted ? 108 : 72)
+                  : 8,
+              bottomReserve: keyboardEnabled && (_isSettingsMode || _isMemorizing)
+                  ? 52
+                  : 16,
+              child: trainerBody,
             ),
             if (_isPreparingImages)
               Positioned.fill(
@@ -4829,9 +4842,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
           physics: const BouncingScrollPhysics(),
           child: Column(
             key: key,
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,

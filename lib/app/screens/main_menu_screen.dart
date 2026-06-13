@@ -255,85 +255,137 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
         return Scaffold(
           backgroundColor: palette.background,
           body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: kIsWeb ? 560 : double.infinity,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final wideWeb = isWebDesktopLayout(context);
+                final menuWidth = webMainMenuMaxWidth(context);
+
+                Widget content = Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: wideWeb ? 28 : 22,
+                    vertical: wideWeb ? 20 : 14,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  Row(
-                    children: [
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () => _openScreen(const SettingsScreen()),
-                        icon: Icon(Icons.settings_outlined, color: onSurface.withOpacity(0.62)),
+                      Row(
+                        children: [
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => _openScreen(const SettingsScreen()),
+                            icon: Icon(Icons.settings_outlined,
+                                color: onSurface.withOpacity(0.62)),
+                          ),
+                          const SizedBox(width: 4),
+                          const ThemeColorSwitcher(initialExpanded: false),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      const ThemeColorSwitcher(initialExpanded: false),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Mnemonica',
+                        style: TextStyle(
+                          color: onSurface.withOpacity(0.95),
+                          fontSize: wideWeb ? 34 : 38,
+                          fontWeight: FontWeight.w200,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        AppTexts.get('app_subtitle'),
+                        style: TextStyle(
+                          color: accent.withOpacity(0.75),
+                          fontSize: wideWeb ? 13 : 14,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 2.2,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildXpProgressHeader(onSurface),
+                      const SizedBox(height: 18),
+                      _buildDailyCard(onSurface, accent),
+                      const SizedBox(height: 22),
+                      ScaleTransition(
+                        scale: _pulseAnimation,
+                        child: _buildPrimaryTrainingButton(onSurface, accent),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildCommunityHubButton(onSurface, accent),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _quickNavButton(
+                              icon: Icons.emoji_events_outlined,
+                              onTap: () => _openScreen(const LeaderboardScreen())),
+                          _quickNavButton(
+                              icon: Icons.lightbulb_outline_rounded,
+                              onTap: () => _openScreen(const TechniquesScreen())),
+                          _quickNavButton(
+                            icon: Icons.flash_on_rounded,
+                            onTap: () => _openScreen(const DuelLobbyScreen()),
+                            highlight: true,
+                          ),
+                          _quickNavButton(
+                              icon: Icons.bar_chart_rounded,
+                              onTap: () =>
+                                  _openScreen(const premium_stats.PremiumStatisticsScreen())),
+                          _quickNavButton(
+                              icon: Icons.task_alt_rounded,
+                              onTap: () => _openScreen(const QuestsScreen())),
+                        ],
+                      ),
+                      if (!wideWeb) const Spacer(),
+                      const SizedBox(height: 14),
+                      Center(
+                        child: Text(
+                          AppTexts.get('main_bottom_quote'),
+                          style: TextStyle(
+                            color: onSurface.withOpacity(0.2),
+                            fontSize: 9,
+                            letterSpacing: 3,
+                          ),
+                        ),
+                      ),
+                      if (wideWeb) const SizedBox(height: 24),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Mnemonica',
-                    style: TextStyle(
-                      color: onSurface.withOpacity(0.95),
-                      fontSize: 38,
-                      fontWeight: FontWeight.w200,
-                      letterSpacing: 0.2,
+                );
+
+                if (wideWeb) {
+                  content = DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: palette.surface.withOpacity(0.55),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: palette.border.withOpacity(0.45)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withOpacity(0.08),
+                          blurRadius: 40,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    AppTexts.get('app_subtitle'),
-                    style: TextStyle(
-                      color: accent.withOpacity(0.75),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w300,
-                      letterSpacing: 2.2,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildXpProgressHeader(onSurface),
-                  const SizedBox(height: 18),
-                  _buildDailyCard(onSurface, accent),
-                  const SizedBox(height: 22),
-                  ScaleTransition(
-                    scale: _pulseAnimation,
-                    child: _buildPrimaryTrainingButton(onSurface, accent),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildCommunityHubButton(onSurface, accent),
-                  const SizedBox(height: 18),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _quickNavButton(icon: Icons.emoji_events_outlined, onTap: () => _openScreen(const LeaderboardScreen())),
-                      _quickNavButton(icon: Icons.lightbulb_outline_rounded, onTap: () => _openScreen(const TechniquesScreen())),
-                      _quickNavButton(
-                        icon: Icons.flash_on_rounded,
-                        onTap: () => _openScreen(const DuelLobbyScreen()),
-                        highlight: true,
+                    child: content,
+                  );
+                }
+
+                return Align(
+                  alignment: wideWeb ? Alignment.center : Alignment.topCenter,
+                  child: SingleChildScrollView(
+                    physics: wideWeb
+                        ? const ClampingScrollPhysics()
+                        : const BouncingScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: menuWidth,
+                        minHeight: wideWeb ? 0 : constraints.maxHeight,
                       ),
-                      _quickNavButton(icon: Icons.bar_chart_rounded, onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen())),
-                      _quickNavButton(icon: Icons.task_alt_rounded, onTap: () => _openScreen(const QuestsScreen())),
-                    ],
-                  ),
-                  const Spacer(),
-                  const SizedBox(height: 14),
-                  Center(
-                    child: Text(
-                      AppTexts.get('main_bottom_quote'),
-                      style: TextStyle(color: onSurface.withOpacity(0.2), fontSize: 9, letterSpacing: 3),
+                      child: content,
                     ),
                   ),
-                ],
-                  ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         );
@@ -466,11 +518,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
   }
 
   Widget _buildPrimaryTrainingButton(Color onSurface, Color accent) {
+    final compact = isWebDesktopLayout(context);
     return GestureDetector(
       onTap: () => _openScreen(const TrainingScreen()),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 20),
+        padding: EdgeInsets.symmetric(vertical: compact ? 16 : 20),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(22),
           gradient: LinearGradient(colors: [accent.withOpacity(0.96), accent]),
@@ -482,13 +535,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 30,
-              height: 30,
+              width: compact ? 28 : 30,
+              height: compact ? 28 : 30,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.black.withOpacity(0.7),
               ),
-              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 20),
+              child: Icon(Icons.play_arrow_rounded,
+                  color: Colors.white, size: compact ? 18 : 20),
             ),
             const SizedBox(width: 14),
             Text(
@@ -500,7 +554,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
               style: TextStyle(
                 color: Colors.black.withOpacity(0.84),
                 fontWeight: FontWeight.w600,
-                fontSize: 18,
+                fontSize: compact ? 16 : 18,
                 letterSpacing: 1.2,
               ),
             ),

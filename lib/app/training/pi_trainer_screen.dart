@@ -594,7 +594,15 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     Widget bodyStack = Stack(
       fit: StackFit.expand,
       children: [
-        Center(child: body),
+        webTrainerViewport(
+          context: context,
+          topPadding: 8,
+          bottomReserve: keyboardEnabled &&
+                  (_phase == _PiPhase.setup || _phase == _PiPhase.memorize)
+              ? 52
+              : 16,
+          child: body,
+        ),
         if (keyboardHint.isNotEmpty)
           Positioned(
             left: 0,

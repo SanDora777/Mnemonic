@@ -48,6 +48,26 @@
 </head>
 <body>
   <div id="loading">Загрузка Mnemonik…</div>
+  <script>
+    // Сброс устаревшего PWA-кэша после обновления деплоя.
+    (function () {
+      var VERSION = '2026-06-13-v2';
+      try {
+        if (localStorage.getItem('mnemonik_web_version') === VERSION) return;
+        localStorage.setItem('mnemonik_web_version', VERSION);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          });
+        }
+        if (window.caches && caches.keys) {
+          caches.keys().then(function (keys) {
+            keys.forEach(function (k) { caches.delete(k); });
+          });
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

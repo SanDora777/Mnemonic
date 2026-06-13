@@ -49,29 +49,11 @@ class MemoryArtApp extends StatelessWidget {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                Widget appChild = PaletteThemeTransition(
+                return PaletteThemeTransition(
                   child: DuelInviteGlobalOverlay(
                     child: child ?? const SizedBox.shrink(),
                   ),
                 );
-                if (kIsWeb) {
-                  final size = MediaQuery.sizeOf(context);
-                  if (size.width >= 768) {
-                    appChild = ColoredBox(
-                      color: const Color(0xFF000000),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: min(size.width, 1180),
-                            maxHeight: size.height,
-                          ),
-                          child: appChild,
-                        ),
-                      ),
-                    );
-                  }
-                }
-                return appChild;
               },
               title: 'Mnemonik',
               theme: ThemeData(
