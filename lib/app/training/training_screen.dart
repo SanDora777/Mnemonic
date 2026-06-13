@@ -2522,8 +2522,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
 
     final contentMaxWidth = _isSettingsMode
-        ? webDesktopContentMaxWidth(context, narrow: 480, medium: 560, wide: 620)
-        : webDesktopContentMaxWidth(context, narrow: 520, medium: 720, wide: 900);
+        ? webDesktopContentMaxWidth(context, narrow: 520, medium: 680, wide: 760)
+        : webDesktopContentMaxWidth(context, narrow: 560, medium: 820, wide: 960);
     trainerBody = webDesktopFrame(
       context: context,
       maxWidth: contentMaxWidth,

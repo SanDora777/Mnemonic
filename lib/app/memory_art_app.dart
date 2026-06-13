@@ -51,7 +51,9 @@ class MemoryArtApp extends StatelessWidget {
               builder: (context, child) {
                 return PaletteThemeTransition(
                   child: DuelInviteGlobalOverlay(
-                    child: child ?? const SizedBox.shrink(),
+                    child: webDesktopShell(
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 );
               },

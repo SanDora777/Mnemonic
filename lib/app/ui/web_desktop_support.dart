@@ -2,15 +2,69 @@ part of 'package:flutter_application_1/recovered_app.dart';
 
 /// Платформы, где ожидается физическая клавиатура (веб на ноутбуке, десктоп).
 bool isWebDesktopLayout(BuildContext context) {
-  return kIsWeb && MediaQuery.sizeOf(context).width >= 700;
+  if (!kIsWeb) return false;
+  return MediaQuery.sizeOf(context).width >= 560;
 }
 
 double webMainMenuMaxWidth(BuildContext context) {
   if (!isWebDesktopLayout(context)) return double.infinity;
   final w = MediaQuery.sizeOf(context).width;
-  if (w >= 1200) return 480;
-  if (w >= 900) return 440;
-  return 400;
+  if (w >= 1100) return 920;
+  if (w >= 860) return 820;
+  if (w >= 700) return 680;
+  return 560;
+}
+
+bool webMainMenuUseTwoColumns(BuildContext context) {
+  return kIsWeb && MediaQuery.sizeOf(context).width >= 780;
+}
+
+/// Фон и центрирование для веб-версии на ноутбуке.
+Widget webDesktopShell({required Widget child}) {
+  return ValueListenableBuilder<AppPalette>(
+    valueListenable: appPalette,
+    builder: (context, palette, _) {
+      if (!isWebDesktopLayout(context)) return child;
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: palette.background,
+          gradient: RadialGradient(
+            center: const Alignment(0, -0.35),
+            radius: 1.15,
+            colors: [
+              palette.accent.withOpacity(0.07),
+              palette.background,
+              const Color(0xFF000000),
+            ],
+            stops: const [0.0, 0.45, 1.0],
+          ),
+        ),
+        child: child,
+      );
+    },
+  );
+}
+
+BoxDecoration webDesktopPanelDecoration(AppPalette palette, Color accent) {
+  return BoxDecoration(
+    color: palette.surface.withOpacity(0.72),
+    borderRadius: BorderRadius.circular(32),
+    border: Border.all(color: palette.border.withOpacity(0.5)),
+    boxShadow: [
+      BoxShadow(
+        color: accent.withOpacity(0.12),
+        blurRadius: 48,
+        spreadRadius: 2,
+      ),
+      BoxShadow(
+        color: Colors.black.withOpacity(0.35),
+        blurRadius: 24,
+        offset: const Offset(0, 12),
+      ),
+    ],
+  );
 }
 
 /// Верхнее выравнивание вместо [Center] — контент не прыгает при смене фазы.
@@ -55,9 +109,9 @@ bool trainerShortcutBlockedByTextField() {
 
 double webDesktopContentMaxWidth(
   BuildContext context, {
-  double narrow = 480,
-  double medium = 640,
-  double wide = 880,
+  double narrow = 520,
+  double medium = 760,
+  double wide = 960,
 }) {
   final isWidePlatform = kIsWeb ||
       defaultTargetPlatform == TargetPlatform.windows ||

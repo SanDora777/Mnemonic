@@ -38,36 +38,54 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       letter-spacing: 0.04em;
     }
-
-    @media (min-width: 768px) {
-      body {
-        background: radial-gradient(ellipse at center, #111111 0%, #000000 72%);
-      }
-    }
   </style>
 </head>
 <body>
   <div id="loading">Загрузка Mnemonik…</div>
   <script>
-    // Сброс устаревшего PWA-кэша после обновления деплоя.
     (function () {
-      var VERSION = '2026-06-13-v2';
-      try {
-        if (localStorage.getItem('mnemonik_web_version') === VERSION) return;
-        localStorage.setItem('mnemonik_web_version', VERSION);
+      var VERSION = '2026-06-13-v3';
+      var KEY = 'mnemonik_web_version';
+      var RELOAD_FLAG = 'mnemonik_reload_once_v3';
+
+      function bootFlutter() {
+        var s = document.createElement('script');
+        s.src = 'flutter_bootstrap.js';
+        s.async = true;
+        document.body.appendChild(s);
+      }
+
+      if (localStorage.getItem(KEY) === VERSION) {
+        bootFlutter();
+        return;
+      }
+
+      if (!sessionStorage.getItem(RELOAD_FLAG)) {
+        sessionStorage.setItem(RELOAD_FLAG, '1');
+        localStorage.setItem(KEY, VERSION);
+        var tasks = [];
         if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (r) { r.unregister(); });
-          });
+          tasks.push(
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            })
+          );
         }
         if (window.caches && caches.keys) {
-          caches.keys().then(function (keys) {
-            keys.forEach(function (k) { caches.delete(k); });
-          });
+          tasks.push(
+            caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            })
+          );
         }
-      } catch (e) {}
+        Promise.all(tasks).finally(function () { location.reload(); });
+        return;
+      }
+
+      sessionStorage.removeItem(RELOAD_FLAG);
+      localStorage.setItem(KEY, VERSION);
+      bootFlutter();
     })();
   </script>
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
