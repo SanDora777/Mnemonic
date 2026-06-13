@@ -1,11 +1,11 @@
 {
-    "name": "flutter_application_1",
-    "short_name": "flutter_application_1",
+    "name": "Mnemonik — Art of Memory",
+    "short_name": "Mnemonik",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "description": "Тренажёр искусства памяти: числа, карты, лица, дуэли и академия мнемоники.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,0 +1,321 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-23T22:06:23.274Z",
+  "faces": [
+    {
+      "id": "boy_001",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/001.jpg"
+    },
+    {
+      "id": "boy_002",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/002.jpg"
+    },
+    {
+      "id": "boy_003",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/003.jpg"
+    },
+    {
+      "id": "boy_004",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/004.jpg"
+    },
+    {
+      "id": "boy_005",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/005.jpg"
+    },
+    {
+      "id": "boy_006",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/006.jpg"
+    },
+    {
+      "id": "boy_007",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/007.jpg"
+    },
+    {
+      "id": "boy_008",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/008.jpg"
+    },
+    {
+      "id": "boy_009",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/009.jpg"
+    },
+    {
+      "id": "boy_010",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/010.jpg"
+    },
+    {
+      "id": "boy_011",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/011.jpg"
+    },
+    {
+      "id": "boy_012",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/012.jpg"
+    },
+    {
+      "id": "boy_013",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/013.jpg"
+    },
+    {
+      "id": "boy_014",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/014.jpg"
+    },
+    {
+      "id": "boy_015",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/015.jpg"
+    },
+    {
+      "id": "boy_016",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/016.jpg"
+    },
+    {
+      "id": "boy_017",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/017.jpg"
+    },
+    {
+      "id": "boy_018",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/018.jpg"
+    },
+    {
+      "id": "boy_019",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/019.jpg"
+    },
+    {
+      "id": "boy_020",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/020.jpg"
+    },
+    {
+      "id": "boy_021",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/021.jpg"
+    },
+    {
+      "id": "boy_022",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/022.jpg"
+    },
+    {
+      "id": "boy_023",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/023.jpg"
+    },
+    {
+      "id": "boy_024",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/024.jpg"
+    },
+    {
+      "id": "boy_025",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/025.jpg"
+    },
+    {
+      "id": "boy_026",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/026.jpg"
+    },
+    {
+      "id": "boy_027",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/027.jpg"
+    },
+    {
+      "id": "boy_028",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/028.jpg"
+    },
+    {
+      "id": "boy_029",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/029.jpg"
+    },
+    {
+      "id": "boy_030",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/030.jpg"
+    },
+    {
+      "id": "boy_031",
+      "gender": "male",
+      "assetPath": "assets/faces/boy/031.jpg"
+    },
+    {
+      "id": "girl_001",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/001.jpg"
+    },
+    {
+      "id": "girl_002",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/002.jpg"
+    },
+    {
+      "id": "girl_003",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/003.jpg"
+    },
+    {
+      "id": "girl_004",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/004.jpg"
+    },
+    {
+      "id": "girl_005",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/005.jpg"
+    },
+    {
+      "id": "girl_006",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/006.jpg"
+    },
+    {
+      "id": "girl_007",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/007.jpg"
+    },
+    {
+      "id": "girl_008",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/008.jpg"
+    },
+    {
+      "id": "girl_009",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/009.jpg"
+    },
+    {
+      "id": "girl_010",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/010.jpg"
+    },
+    {
+      "id": "girl_011",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/011.jpg"
+    },
+    {
+      "id": "girl_012",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/012.jpg"
+    },
+    {
+      "id": "girl_013",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/013.jpg"
+    },
+    {
+      "id": "girl_014",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/014.jpg"
+    },
+    {
+      "id": "girl_015",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/015.jpg"
+    },
+    {
+      "id": "girl_016",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/016.jpg"
+    },
+    {
+      "id": "girl_017",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/017.jpg"
+    },
+    {
+      "id": "girl_018",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/018.jpg"
+    },
+    {
+      "id": "girl_019",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/019.jpg"
+    },
+    {
+      "id": "girl_020",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/020.jpg"
+    },
+    {
+      "id": "girl_021",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/021.jpg"
+    },
+    {
+      "id": "girl_022",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/022.jpg"
+    },
+    {
+      "id": "girl_023",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/023.jpg"
+    },
+    {
+      "id": "girl_024",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/024.jpg"
+    },
+    {
+      "id": "girl_025",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/025.jpg"
+    },
+    {
+      "id": "girl_026",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/026.jpg"
+    },
+    {
+      "id": "girl_027",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/027.jpg"
+    },
+    {
+      "id": "girl_028",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/028.jpg"
+    },
+    {
+      "id": "girl_029",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/029.jpg"
+    },
+    {
+      "id": "girl_030",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/030.jpg"
+    },
+    {
+      "id": "girl_031",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/031.jpg"
+    },
+    {
+      "id": "girl_032",
+      "gender": "female",
+      "assetPath": "assets/faces/girl/032.jpg"
+    }
+  ]
+}

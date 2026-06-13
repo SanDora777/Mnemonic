@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Public read for trainer face photos (uploaded via tools/upload_faces.mjs).
+    match /trainer/faces/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

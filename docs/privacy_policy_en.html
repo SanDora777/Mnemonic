@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy Policy — Mnemonik</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 52rem;
+      margin: 0 auto;
+      padding: 1.5rem;
+      color: #1a1a1a;
+      background: #fff;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: #e8e8e8; background: #121212; }
+      a { color: #8ab4f8; }
+    }
+    h1, h2 { line-height: 1.25; }
+    h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+    .meta { color: #666; font-size: 0.95rem; margin-bottom: 2rem; }
+    @media (prefers-color-scheme: dark) { .meta { color: #aaa; } }
+    h2 { font-size: 1.2rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
+    @media (prefers-color-scheme: dark) { h2 { border-color: #333; } }
+    ul { padding-left: 1.25rem; }
+    li { margin: 0.35rem 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; margin: 1rem 0; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem 0.65rem; text-align: left; vertical-align: top; }
+    @media (prefers-color-scheme: dark) { th, td { border-color: #444; } }
+    th { background: #f5f5f5; }
+    @media (prefers-color-scheme: dark) { th { background: #1e1e1e; } }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="meta">
+    App: <strong>Mnemonik</strong> (package: <code>com.sandora.mnemonika</code>)<br>
+    Effective date: <strong>June 10, 2026</strong><br>
+    Last updated: <strong>June 10, 2026</strong>
+  </p>
+
+  <p>
+    This Privacy Policy explains what data the <strong>Mnemonik</strong> mobile app (“App”) collects,
+    how it is used, who may receive it, and what rights you have. By using the App, you agree to this Policy.
+  </p>
+
+  <h2>1. Data controller & contact</h2>
+  <p>
+  The developer of the App is the owner of the Google Play developer account associated with Mnemonik.
+  </p>
+  <p>
+    Privacy requests (access, deletion, questions):<br>
+    <strong>Email:</strong> <a href="mailto:nbs27933@gmail.com">nbs27933@gmail.com</a>
+  </p>
+
+  <h2>2. What the App does</h2>
+  <p>
+    Mnemonik is a memory-training app. Core training can work offline on your device.
+    Cloud features (sync, leaderboards, duels, community chat, notifications) use Google Firebase.
+  </p>
+
+  <h2>3. Data we collect</h2>
+
+  <h3>3.1 Account data</h3>
+  <ul>
+    <li>Email address and password (email sign-up).</li>
+    <li>One-time email verification codes (processed server-side via Cloud Functions).</li>
+    <li>Anonymous user ID (guest sign-in).</li>
+    <li>Display name, optional profile photo, optional “about me” text.</li>
+    <li>Firebase Authentication user ID (UID).</li>
+  </ul>
+  <p><em>Note:</em> Google Sign-In may be enabled in a future release; Google may share name, email, and profile photo per your Google account settings.</p>
+
+  <h3>3.2 Usage & progress</h3>
+  <ul>
+    <li>Training scores, streaks, per-mode statistics, session history.</li>
+    <li>Quest and learning progress; app settings (language, theme, etc.).</li>
+    <li>Leaderboard points and aggregated public stats (if sharing is enabled).</li>
+  </ul>
+
+  <h3>3.3 Social & multiplayer</h3>
+  <ul>
+    <li>Community chat: message text, display name, user ID, timestamps; images may be posted by authorized admins only.</li>
+    <li>Duels: room state, scores, in-room chat, invites.</li>
+    <li>Online presence (last activity timestamp).</li>
+  </ul>
+
+  <h3>3.4 Notifications</h3>
+  <ul>
+    <li>FCM push token; device time zone for local reminders; activity data for smart reminders.</li>
+  </ul>
+
+  <h3>3.5 On-device data</h3>
+  <ul>
+    <li>Photos/files you explicitly pick for training (faces mode, loci routes, imports). Access requires your permission.</li>
+    <li>Local storage (SharedPreferences) for progress and settings.</li>
+  </ul>
+  <p>Face-training image bytes are <strong>not</strong> uploaded to the cloud—only metadata without images is synced.</p>
+
+  <h3>3.6 What we do <strong>not</strong> collect</h3>
+  <ul>
+    <li>Precise GPS location; contacts/SMS/call logs.</li>
+    <li>Advertising ID (no ads in the current version).</li>
+    <li>Payment data (in-app purchases not connected yet).</li>
+    <li>Firebase Analytics / Crashlytics (not used in the current app code).</li>
+  </ul>
+
+  <h2>4. Android permissions</h2>
+  <table>
+    <thead><tr><th>Permission</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>INTERNET</code></td><td>Cloud sync, chat, duels, news, push.</td></tr>
+      <tr><td><code>POST_NOTIFICATIONS</code></td><td>Push and local reminders (Android 13+).</td></tr>
+      <tr><td>Photos/media (runtime)</td><td>User-selected images for training and profile avatar.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. How we use data</h2>
+  <ul>
+    <li>Provide and improve App features; authenticate users.</li>
+    <li>Show profiles, leaderboards, and public stats (respecting your privacy settings).</li>
+    <li>Enable duels, chat, and invites; send service notifications.</li>
+    <li>Community moderation and user support.</li>
+  </ul>
+  <p>We do <strong>not</strong> sell your personal data or use it for targeted ads in the current version.</p>
+
+  <h2>6. Third parties</h2>
+  <table>
+    <thead><tr><th>Recipient</th><th>Purpose</th><th>Policy</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Google Firebase</td>
+        <td>Auth, database, push, email OTP functions</td>
+        <td><a href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">firebase.google.com/support/privacy</a></td>
+      </tr>
+      <tr>
+        <td>Google Play</td>
+        <td>App distribution</td>
+        <td><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a></td>
+      </tr>
+      <tr>
+        <td>Other App users</td>
+        <td>Public profile, leaderboards, chat/duel content as designed</td>
+        <td>—</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7. Retention</h2>
+  <ul>
+    <li>Account and cloud data are kept while your account exists.</li>
+    <li>Community chat may rotate daily (00:00 Europe/Berlin).</li>
+    <li>Local data remains until you uninstall the App or clear its storage.</li>
+  </ul>
+
+  <h2>8. Security</h2>
+  <p>Data is transmitted over HTTPS/TLS. Firebase security rules restrict unauthorized access. No method is 100% secure; we use reasonable safeguards.</p>
+
+  <h2>9. Your rights</h2>
+  <ul>
+    <li>Edit profile and privacy settings in the App.</li>
+    <li>Disable notifications in App or OS settings.</li>
+    <li>Request account/data deletion: <a href="mailto:nbs27933@gmail.com">nbs27933@gmail.com</a> (typically within 30 days).</li>
+    <li>Request data export; object to or restrict processing where applicable law allows.</li>
+  </ul>
+
+  <h2>10. Children</h2>
+  <p>The App is not directed at children under 13. Contact us to remove a child’s data if you believe it was collected without parental consent.</p>
+
+  <h2>11. International transfers</h2>
+  <p>Firebase servers may be located outside your country. Google applies appropriate safeguards for cross-border processing.</p>
+
+  <h2>12. Changes</h2>
+  <p>We may update this Policy; the “Last updated” date will change. Material changes may be communicated in the App or by email.</p>
+
+  <hr>
+  <p class="meta">© 2026 Mnemonik · <a href="mailto:nbs27933@gmail.com">nbs27933@gmail.com</a></p>
+</body>
+</html>

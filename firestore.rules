@@ -1,0 +1,177 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCreator() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email == 'nbs27933@gmail.com';
+    }
+
+    function isCreatorFieldChange() {
+      return !request.resource.data.keys().hasAny(['isCreator'])
+        || (isCreator() && request.resource.data.isCreator == true);
+    }
+
+    // Duel rooms.
+    match /duels/{roomId} {
+      // Authenticated users (including anonymous auth) can read rooms.
+      allow read: if isSignedIn();
+
+      // Room creation.
+      allow create: if isSignedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.roomId == roomId;
+
+      // App updates room state from clients, so keep this authenticated-only.
+      allow update, delete: if isSignedIn();
+    }
+
+    // In-room chat messages.
+    match /duels/{roomId}/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      // Editing/deleting chat messages is disabled.
+      allow update, delete: if false;
+    }
+
+    // Community chat (daily bucket — cleared at 00:00 Europe/Berlin).
+    match /global_chat_days/{dayKey}/messages/{messageId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && (
+          !('type' in request.resource.data)
+          || request.resource.data.type == 'text'
+          || (isCreator() && request.resource.data.type == 'image')
+        );
+      allow update: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+      allow delete: if isSignedIn()
+        && (resource.data.uid == request.auth.uid || isCreator());
+    }
+
+    // Academy CMS (creator writes, signed-in users read).
+    match /academy_custom_sections/{sectionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    match /academy_custom_lessons/{lessonId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    match /academy_custom_slides/{slideId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    match /academy_section_layouts/{sectionId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    match /academy_premium_config/{docId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    // Facts trainer bank (creator writes, signed-in users read).
+    match /memory_facts_bank/{factId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    // Community news posts (creator only writes).
+    match /news_posts/{postId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    // Chat mutes (creator only).
+    match /global_chat_mutes/{uid} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isCreator();
+    }
+
+    // Duel invites sent from community chat (doc id = inviter uid).
+    match /users/{uid}/duel_invites/{inviterUid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn()
+        && inviterUid == request.auth.uid
+        && request.resource.data.fromUid == request.auth.uid;
+      allow update, delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Public profile card (avatar, bio, display name).
+    match /users/{uid} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && isCreatorFieldChange();
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && isCreatorFieldChange();
+      allow delete: if false;
+
+      match /app/{docId} {
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+    }
+
+    // Email OTP codes — only Cloud Functions (Admin SDK) may read/write.
+    match /email_otps/{docId} {
+      allow read, write: if false;
+    }
+
+    // Creator push broadcast metadata + logs (Cloud Functions write).
+    match /admin_meta/{docId} {
+      allow read: if isCreator();
+      allow write: if false;
+    }
+
+    match /creator_broadcast_logs/{logId} {
+      allow read: if isCreator();
+      allow write: if false;
+    }
+
+    // Creator → all users (free path: clients show local notification when online).
+    match /creator_broadcasts/{broadcastId} {
+      allow read: if isSignedIn();
+      allow create: if isCreator()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.title is string
+        && request.resource.data.body is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.body.size() > 0
+        && request.resource.data.createdAtMs is int;
+      allow update, delete: if false;
+    }
+
+    // Leaderboards.
+    // Structure:
+    // /leaderboards/{board}/{periodKey}/{uid}
+    // where board in: daily, weekly, monthly, alltime.
+    match /leaderboards/{board} {
+      // Board metadata document (if used).
+      allow read: if true;
+      allow create, update, delete: if false;
+
+      match /{periodKey}/{uid} {
+        // Public read for ranking display.
+        allow read: if true;
+
+        // Signed-in users can only write their own row.
+        allow create, update: if isSignedIn() && request.auth.uid == uid;
+        allow delete: if false;
+      }
+    }
+  }
+}

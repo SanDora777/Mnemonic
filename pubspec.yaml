@@ -35,10 +35,18 @@ dependencies:
   permission_handler: ^12.0.1
   firebase_core: ^4.7.0
   firebase_auth: ^6.4.0
+  cloud_functions: ^6.0.0
   cloud_firestore: ^6.3.0
   google_sign_in: ^7.2.0
   firebase_storage: ^13.3.0
   image_picker: ^1.2.1
+  firebase_messaging: ^16.0.3
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  flutter_timezone: ^4.1.0
+  file_picker: ^11.0.2
+  flutter_svg: ^2.3.0
+  just_audio: ^0.10.5
 
 dev_dependencies:
   flutter_test:
@@ -72,6 +80,20 @@ flutter:
     - worsgenerator/ru/words.txt
     - worsgenerator/en/words.txt
     - worsgenerator/de/words.txt
+    - assets/faces/manifest.json
+    - assets/faces/boy/
+    - assets/faces/girl/
+    - assets/facenames/runame.txt
+    - assets/facenames/engname.txt
+    - assets/facenames/gername.txt
+    - "assets/facenames/ruinternational name.txt"
+    - assets/cards/suits/
+    - assets/audio/music/where_light_rests.mp3
+    - assets/audio/sfx/ui_click.mp3
+    - assets/audio/sfx/level_fail.mp3
+    - assets/audio/sfx/level_success.mp3
+    - assets/audio/sfx/academy_lesson_complete.mp3
+    - assets/pi/pi_digits.txt
 
   # To add assets to your application, add an assets section, like this:
   # assets:

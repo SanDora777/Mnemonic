@@ -46,7 +46,12 @@ app.*.map.json
 
 # Local secrets and machine-specific files
 google-services.json
+android/key.properties
 *.jks
 *.keystore
 .env
 .env.*
+
+# Node (Firebase CLI local install)
+node_modules/
+.firebase/

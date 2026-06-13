@@ -34,7 +34,8 @@ class ProgressService {
     final prefs = await SharedPreferences.getInstance();
     final storedVersion = prefs.getInt(_kXpSystemVersion) ?? 1;
     if (storedVersion < _kCurrentXpSystemVersion) {
-      await _resetXpCounterForNewSystem(prefs);
+      // Keep existing XP on APK upgrade — cloud/local merge uses max(); zeroing here
+      // caused progress loss when cloud pull happened after this reset.
       await prefs.setInt(_kXpSystemVersion, _kCurrentXpSystemVersion);
     }
     final xp = prefs.getInt(_kXp) ?? 0;
@@ -61,9 +62,12 @@ class ProgressService {
       await _persist(prefs, normalized);
     }
     final lastLogin = _readDate(prefs, _kLastLoginDate);
-    if (lastLogin == null || !UserProgress.isSameDay(lastLogin, now)) {
+    if (lastLogin == null) {
+      // First app open: record date only — new accounts must start at 0 XP.
       await _writeDate(prefs, _kLastLoginDate, now);
-      // First login of the day: +5 XP (doesn't affect streak by itself)
+    } else if (!UserProgress.isSameDay(lastLogin, now)) {
+      await _writeDate(prefs, _kLastLoginDate, now);
+      // Returning user, new calendar day: +5 XP (doesn't affect streak by itself).
       await addXP(5, countForStreak: false);
     }
   }
@@ -118,7 +122,7 @@ class ProgressService {
   }
 
   Future<void> awardDailyTaskCompleted() async {
-    await addXP(25, countForStreak: true);
+    await addXP(1, countForStreak: true);
   }
 
   Map<String, dynamic> toCloudJson() {
@@ -136,16 +140,34 @@ class ProgressService {
 
   Future<void> applyCloudJson(Map<String, dynamic> raw) async {
     final prefs = await SharedPreferences.getInstance();
-    final xp = (raw['xp'] as num?)?.toInt() ?? 0;
+    final local = progress.value;
+
+    final cloudXp = (raw['xp'] as num?)?.toInt() ?? 0;
+    final xp = max(local.xp, cloudXp);
     final derived = _deriveFromXp(xp);
+
+    final cloudStreak = (raw['streak'] as num?)?.toInt() ?? 0;
+    final streak = max(local.streak, cloudStreak);
+
+    final cloudLastActive = _parseDate(raw['lastActiveDate']);
+    final cloudLastLogin = _parseDate(raw['lastLoginDate']);
+    final lastActiveDate = _latestDate(local.lastActiveDate, cloudLastActive);
+    final lastLoginDate = _latestDate(local.lastLoginDate, cloudLastLogin);
+
     final p = derived.copyWith(
       xp: xp,
-      streak: (raw['streak'] as num?)?.toInt() ?? 0,
-      lastActiveDate: _parseDate(raw['lastActiveDate']),
-      lastLoginDate: _parseDate(raw['lastLoginDate']),
+      streak: streak,
+      lastActiveDate: lastActiveDate,
+      lastLoginDate: lastLoginDate,
     );
     progress.value = p;
     await _persist(prefs, p);
+  }
+
+  static DateTime? _latestDate(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return a.isAfter(b) ? a : b;
   }
 
   Future<void> resetLocalProgress() async {
@@ -209,13 +231,6 @@ class ProgressService {
       lastActiveDate: null,
       lastLoginDate: null,
     );
-  }
-
-  Future<void> _resetXpCounterForNewSystem(SharedPreferences prefs) async {
-    await prefs.setInt(_kXp, 0);
-    await prefs.setInt(_kLevel, 1);
-    await prefs.setInt(_kCurrentLevelXp, 0);
-    await prefs.setInt(_kXpToNextLevel, 50);
   }
 
   UserProgress _applyStreak(UserProgress p, DateTime now) {
