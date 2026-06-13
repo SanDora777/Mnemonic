@@ -1,22 +1,20 @@
 part of 'package:flutter_application_1/recovered_app.dart';
 
 /// Платформы, где ожидается физическая клавиатура (веб на ноутбуке, десктоп).
-bool isWebDesktopLayout(BuildContext context) {
+/// На вебе используем ширину из [LayoutBuilder], а не только MediaQuery.
+bool isWebDesktopLayout(BuildContext context, [double? width]) {
   if (!kIsWeb) return false;
-  return MediaQuery.sizeOf(context).width >= 560;
+  final w = width ?? MediaQuery.sizeOf(context).width;
+  return w >= 520;
 }
 
-double webMainMenuMaxWidth(BuildContext context) {
-  if (!isWebDesktopLayout(context)) return double.infinity;
-  final w = MediaQuery.sizeOf(context).width;
-  if (w >= 1100) return 920;
-  if (w >= 860) return 820;
-  if (w >= 700) return 680;
-  return 560;
+double webMainMenuMaxWidth(double viewportWidth) {
+  if (!kIsWeb || viewportWidth < 520) return double.infinity;
+  return min(viewportWidth * 0.94, 1040);
 }
 
-bool webMainMenuUseTwoColumns(BuildContext context) {
-  return kIsWeb && MediaQuery.sizeOf(context).width >= 780;
+bool webMainMenuUseTwoColumns(double viewportWidth) {
+  return kIsWeb && viewportWidth >= 640;
 }
 
 /// Фон и центрирование для веб-версии на ноутбуке.

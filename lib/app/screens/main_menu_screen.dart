@@ -257,117 +257,145 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final wideWeb = isWebDesktopLayout(context);
-                final twoCols = webMainMenuUseTwoColumns(context);
-                final menuWidth = webMainMenuMaxWidth(context);
-                final panelPad = wideWeb ? 32.0 : 22.0;
+                final viewportW = constraints.maxWidth;
+                final wideWeb = isWebDesktopLayout(context, viewportW);
+                final twoCols = webMainMenuUseTwoColumns(viewportW);
+                final menuWidth = webMainMenuMaxWidth(viewportW);
 
-                Widget panel = Padding(
-                  padding: EdgeInsets.all(panelPad),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildMenuHeader(onSurface),
-                      SizedBox(height: wideWeb ? 28 : 18),
-                      if (twoCols)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              flex: 11,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildXpProgressHeader(onSurface),
-                                  const SizedBox(height: 28),
-                                  ScaleTransition(
-                                    scale: _pulseAnimation,
-                                    child: _buildPrimaryTrainingButton(onSurface, accent),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  Center(
-                                    child: Text(
-                                      AppTexts.get('main_bottom_quote'),
-                                      style: TextStyle(
-                                        color: onSurface.withOpacity(0.2),
-                                        fontSize: 9,
-                                        letterSpacing: 3,
+                if (wideWeb) {
+                  return Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: menuWidth),
+                        child: DecoratedBox(
+                          decoration: webDesktopPanelDecoration(palette, accent),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(36, 28, 36, 32),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildMenuHeader(onSurface, wideWeb: true),
+                                const SizedBox(height: 32),
+                                if (twoCols)
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 5,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                                          children: [
+                                            _buildXpProgressHeader(onSurface),
+                                            const SizedBox(height: 28),
+                                            ScaleTransition(
+                                              scale: _pulseAnimation,
+                                              child: _buildPrimaryTrainingButton(
+                                                onSurface,
+                                                accent,
+                                                desktop: true,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            Text(
+                                              AppTexts.get('main_bottom_quote'),
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: onSurface.withOpacity(0.22),
+                                                fontSize: 10,
+                                                letterSpacing: 2.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
+                                        const SizedBox(width: 32),
+                                        Expanded(
+                                          flex: 4,
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                                            children: [
+                                              _buildDailyCard(onSurface, accent),
+                                              const SizedBox(height: 16),
+                                              _buildCommunityHubButton(onSurface, accent),
+                                              const SizedBox(height: 16),
+                                              _buildWebQuickNavChips(onSurface, accent),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                else
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      _buildXpProgressHeader(onSurface),
+                                      const SizedBox(height: 20),
+                                      _buildDailyCard(onSurface, accent),
+                                      const SizedBox(height: 20),
+                                      ScaleTransition(
+                                        scale: _pulseAnimation,
+                                        child: _buildPrimaryTrainingButton(
+                                          onSurface,
+                                          accent,
+                                          desktop: true,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildCommunityHubButton(onSurface, accent),
+                                      const SizedBox(height: 16),
+                                      _buildWebQuickNavChips(onSurface, accent),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 28),
-                            Expanded(
-                              flex: 9,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildDailyCard(onSurface, accent),
-                                  const SizedBox(height: 18),
-                                  _buildCommunityHubButton(onSurface, accent),
-                                  const SizedBox(height: 18),
-                                  _buildQuickNavRow(),
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      else ...[
-                        _buildXpProgressHeader(onSurface),
-                        const SizedBox(height: 18),
-                        _buildDailyCard(onSurface, accent),
-                        const SizedBox(height: 22),
-                        ScaleTransition(
-                          scale: _pulseAnimation,
-                          child: _buildPrimaryTrainingButton(onSurface, accent),
-                        ),
-                        const SizedBox(height: 18),
-                        _buildCommunityHubButton(onSurface, accent),
-                        const SizedBox(height: 18),
-                        _buildQuickNavRow(),
-                        if (!wideWeb) const Spacer(),
-                        const SizedBox(height: 14),
-                        Center(
-                          child: Text(
-                            AppTexts.get('main_bottom_quote'),
-                            style: TextStyle(
-                              color: onSurface.withOpacity(0.2),
-                              fontSize: 9,
-                              letterSpacing: 3,
+                              ],
                             ),
                           ),
                         ),
-                        if (wideWeb) const SizedBox(height: 8),
-                      ],
-                    ],
-                  ),
-                );
-
-                if (wideWeb) {
-                  panel = DecoratedBox(
-                    decoration: webDesktopPanelDecoration(palette, accent),
-                    child: panel,
+                      ),
+                    ),
                   );
                 }
 
                 return Align(
-                  alignment: wideWeb ? Alignment.center : Alignment.topCenter,
+                  alignment: Alignment.topCenter,
                   child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: wideWeb ? 24 : 0,
-                      vertical: wideWeb ? 20 : 0,
-                    ),
-                    physics: wideWeb
-                        ? const ClampingScrollPhysics()
-                        : const BouncingScrollPhysics(),
+                    physics: const BouncingScrollPhysics(),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: menuWidth,
-                        minHeight: wideWeb ? 0 : constraints.maxHeight,
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildMenuHeader(onSurface, wideWeb: false),
+                            const SizedBox(height: 18),
+                            _buildXpProgressHeader(onSurface),
+                            const SizedBox(height: 18),
+                            _buildDailyCard(onSurface, accent),
+                            const SizedBox(height: 22),
+                            ScaleTransition(
+                              scale: _pulseAnimation,
+                              child: _buildPrimaryTrainingButton(onSurface, accent),
+                            ),
+                            const SizedBox(height: 18),
+                            _buildCommunityHubButton(onSurface, accent),
+                            const SizedBox(height: 18),
+                            _buildQuickNavRow(),
+                            const Spacer(),
+                            const SizedBox(height: 14),
+                            Center(
+                              child: Text(
+                                AppTexts.get('main_bottom_quote'),
+                                style: TextStyle(
+                                  color: onSurface.withOpacity(0.2),
+                                  fontSize: 9,
+                                  letterSpacing: 3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: panel,
                     ),
                   ),
                 );
@@ -379,11 +407,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildMenuHeader(Color onSurface) {
+  Widget _buildMenuHeader(Color onSurface, {required bool wideWeb}) {
     final accent = appAccentColor.value;
-    final wideWeb = isWebDesktopLayout(context);
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -393,19 +420,19 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                 'Mnemonica',
                 style: TextStyle(
                   color: onSurface.withOpacity(0.95),
-                  fontSize: wideWeb ? 42 : 38,
-                  fontWeight: FontWeight.w200,
-                  letterSpacing: 0.2,
+                  fontSize: wideWeb ? 36 : 38,
+                  fontWeight: FontWeight.w300,
+                  letterSpacing: 0.4,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 AppTexts.get('app_subtitle'),
                 style: TextStyle(
-                  color: accent.withOpacity(0.75),
-                  fontSize: wideWeb ? 14 : 14,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 2.2,
+                  color: accent.withOpacity(0.8),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: 2.4,
                 ),
               ),
             ],
@@ -413,11 +440,124 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
         ),
         IconButton(
           onPressed: () => _openScreen(const SettingsScreen()),
-          icon: Icon(Icons.settings_outlined, color: onSurface.withOpacity(0.62)),
+          icon: Icon(Icons.settings_outlined, color: onSurface.withOpacity(0.55)),
+          tooltip: 'Settings',
         ),
-        const SizedBox(width: 4),
         const ThemeColorSwitcher(initialExpanded: false),
       ],
+    );
+  }
+
+  Widget _buildWebQuickNavChips(Color onSurface, Color accent) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _webNavChip(
+          icon: Icons.emoji_events_outlined,
+          label: AppTexts.translate(const {
+            AppLanguage.ru: 'Рейтинг',
+            AppLanguage.en: 'Ranks',
+            AppLanguage.de: 'Rang',
+          }),
+          onTap: () => _openScreen(const LeaderboardScreen()),
+          onSurface: onSurface,
+        ),
+        _webNavChip(
+          icon: Icons.lightbulb_outline_rounded,
+          label: AppTexts.translate(const {
+            AppLanguage.ru: 'Техники',
+            AppLanguage.en: 'Tips',
+            AppLanguage.de: 'Tipps',
+          }),
+          onTap: () => _openScreen(const TechniquesScreen()),
+          onSurface: onSurface,
+        ),
+        _webNavChip(
+          icon: Icons.flash_on_rounded,
+          label: AppTexts.translate(const {
+            AppLanguage.ru: 'Дуэли',
+            AppLanguage.en: 'Duels',
+            AppLanguage.de: 'Duelle',
+          }),
+          onTap: () => _openScreen(const DuelLobbyScreen()),
+          onSurface: onSurface,
+          highlight: true,
+          accent: accent,
+        ),
+        _webNavChip(
+          icon: Icons.bar_chart_rounded,
+          label: AppTexts.translate(const {
+            AppLanguage.ru: 'Статистика',
+            AppLanguage.en: 'Stats',
+            AppLanguage.de: 'Statistik',
+          }),
+          onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
+          onSurface: onSurface,
+        ),
+        _webNavChip(
+          icon: Icons.task_alt_rounded,
+          label: AppTexts.translate(const {
+            AppLanguage.ru: 'Квесты',
+            AppLanguage.en: 'Quests',
+            AppLanguage.de: 'Quests',
+          }),
+          onTap: () => _openScreen(const QuestsScreen()),
+          onSurface: onSurface,
+        ),
+      ],
+    );
+  }
+
+  Widget _webNavChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color onSurface,
+    bool highlight = false,
+    Color? accent,
+  }) {
+    final chipAccent = accent ?? appAccentColor.value;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: withUiTap(onTap),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: highlight
+                ? chipAccent.withOpacity(0.12)
+                : appPalette.value.card.withOpacity(0.85),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: highlight
+                  ? chipAccent.withOpacity(0.45)
+                  : appPalette.value.border.withOpacity(0.35),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: highlight ? chipAccent : onSurface.withOpacity(0.75),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: onSurface.withOpacity(0.82),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -570,34 +710,38 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildPrimaryTrainingButton(Color onSurface, Color accent) {
-    final compact = isWebDesktopLayout(context);
+  Widget _buildPrimaryTrainingButton(Color onSurface, Color accent,
+      {bool desktop = false}) {
     return GestureDetector(
       onTap: () => _openScreen(const TrainingScreen()),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: compact ? 16 : 20),
+        padding: EdgeInsets.symmetric(vertical: desktop ? 16 : 20),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(desktop ? 16 : 22),
           gradient: LinearGradient(colors: [accent.withOpacity(0.96), accent]),
           boxShadow: [
-            BoxShadow(color: accent.withOpacity(0.38), blurRadius: 20, spreadRadius: 1),
+            BoxShadow(
+              color: accent.withOpacity(desktop ? 0.28 : 0.38),
+              blurRadius: desktop ? 14 : 20,
+              spreadRadius: 0,
+            ),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: compact ? 28 : 30,
-              height: compact ? 28 : 30,
+              width: desktop ? 32 : 30,
+              height: desktop ? 32 : 30,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.black.withOpacity(0.7),
               ),
               child: Icon(Icons.play_arrow_rounded,
-                  color: Colors.white, size: compact ? 18 : 20),
+                  color: Colors.white, size: desktop ? 20 : 20),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Text(
               AppTexts.translate(const {
                 AppLanguage.ru: 'НАЧАТЬ ТРЕНИРОВКУ',
@@ -607,7 +751,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
               style: TextStyle(
                 color: Colors.black.withOpacity(0.84),
                 fontWeight: FontWeight.w600,
-                fontSize: compact ? 16 : 18,
+                fontSize: desktop ? 15 : 18,
                 letterSpacing: 1.2,
               ),
             ),
