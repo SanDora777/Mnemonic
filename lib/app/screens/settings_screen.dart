@@ -328,6 +328,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       palette: palette,
                       onSurface: onSurface,
                       accent: accent,
+                      icon: Icons.palette_outlined,
+                      title: AppTexts.translate(const {
+                        AppLanguage.ru: 'Тема оформления',
+                        AppLanguage.en: 'Theme',
+                        AppLanguage.de: 'Design',
+                      }),
+                      subtitle: AppTexts.translate(const {
+                        AppLanguage.ru: 'Цвет акцента и фон приложения',
+                        AppLanguage.en: 'Accent color and app background',
+                        AppLanguage.de: 'Akzentfarbe und Hintergrund',
+                      }),
+                      onTap: () => showAppThemePicker(context),
+                    ),
+                    _sectionDivider(palette),
+                    _settingsRow(
+                      palette: palette,
+                      onSurface: onSurface,
+                      accent: accent,
                       icon: Icons.translate_rounded,
                       title: AppTexts.get('language'),
                       subtitle: AppTexts.get('language_desc'),
@@ -564,6 +582,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: _showNumberDirectionSheet,
                     ),
                   ]),
+                  if (trainerKeyboardShortcutsEnabled(context)) ...[
+                    const SizedBox(height: 22),
+                    _sectionLabel(
+                      AppTexts.translate({
+                        AppLanguage.ru: 'ИНТЕРФЕЙС',
+                        AppLanguage.en: 'INTERFACE',
+                        AppLanguage.de: 'OBERFLÄCHE',
+                      }),
+                      onSurface,
+                    ),
+                    _sectionCard(palette, [
+                      _settingsRow(
+                        palette: palette,
+                        onSurface: onSurface,
+                        accent: accent,
+                        icon: Icons.keyboard_outlined,
+                        title: AppTexts.translate({
+                          AppLanguage.ru: 'Горячие клавиши',
+                          AppLanguage.en: 'Keyboard shortcuts',
+                          AppLanguage.de: 'Tastenkürzel',
+                        }),
+                        subtitle: AppTexts.translate({
+                          AppLanguage.ru: 'Перелистывание, карта локи, чекпоинты',
+                          AppLanguage.en: 'Chunks, loci map, checkpoints',
+                          AppLanguage.de: 'Chunks, Loci-Karte, Checkpoints',
+                        }),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const KeyboardShortcutsSettingsScreen(),
+                          ),
+                        ),
+                      ),
+                    ]),
+                  ],
                   const SizedBox(height: 22),
                   _sectionLabel(
                     AppTexts.translate({

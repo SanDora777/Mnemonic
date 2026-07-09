@@ -1,16 +1,33 @@
 part of 'package:flutter_application_1/recovered_app.dart';
 
+/// Логическая ширина вью на вебе (иногда [MediaQuery] уже, чем окно браузера).
+double webViewportWidth(BuildContext context) {
+  final mq = MediaQuery.sizeOf(context).width;
+  if (!kIsWeb) return mq;
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  if (views.isEmpty) return mq;
+  final view = views.first;
+  final logical = view.physicalSize.width / view.devicePixelRatio;
+  return max(mq, logical);
+}
+
 /// Платформы, где ожидается физическая клавиатура (веб на ноутбуке, десктоп).
-/// На вебе используем ширину из [LayoutBuilder], а не только MediaQuery.
 bool isWebDesktopLayout(BuildContext context, [double? width]) {
   if (!kIsWeb) return false;
-  final w = width ?? MediaQuery.sizeOf(context).width;
+  final w = width ?? webViewportWidth(context);
   return w >= 520;
 }
 
 double webMainMenuMaxWidth(double viewportWidth) {
   if (!kIsWeb || viewportWidth < 520) return double.infinity;
-  return min(viewportWidth * 0.94, 1040);
+  return double.infinity;
+}
+
+double webMainMenuSidePadding(double viewportWidth) {
+  if (!kIsWeb || viewportWidth < 520) return 22;
+  if (viewportWidth >= 1280) return 48;
+  if (viewportWidth >= 900) return 36;
+  return 24;
 }
 
 bool webMainMenuUseTwoColumns(double viewportWidth) {
@@ -111,15 +128,30 @@ double webDesktopContentMaxWidth(
   double medium = 760,
   double wide = 960,
 }) {
-  final isWidePlatform = kIsWeb ||
-      defaultTargetPlatform == TargetPlatform.windows ||
+  if (kIsWeb) return double.infinity;
+  final isWidePlatform = defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.linux;
   if (!isWidePlatform) return double.infinity;
   final w = MediaQuery.sizeOf(context).width;
   if (w < 600) return narrow;
   if (w < 1024) return medium;
-  return wide;
+  if (w < 1440) return wide;
+  return wide + 160;
+}
+
+double webDesktopHorizontalPadding(BuildContext context) {
+  final w = MediaQuery.sizeOf(context).width;
+  if (!kIsWeb) {
+    if (w >= 1920) return 40;
+    if (w >= 1366) return 28;
+    return 16;
+  }
+  if (w >= 1920) return 56;
+  if (w >= 1440) return 40;
+  if (w >= 1366) return 32;
+  if (w >= 1024) return 24;
+  return 16;
 }
 
 Widget webDesktopFrame({
@@ -127,9 +159,15 @@ Widget webDesktopFrame({
   required Widget child,
   double? maxWidth,
 }) {
+  if (kIsWeb) {
+    final pad = webDesktopHorizontalPadding(context);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      child: child,
+    );
+  }
   final cap = maxWidth ?? webDesktopContentMaxWidth(context);
-  final isWidePlatform = kIsWeb ||
-      defaultTargetPlatform == TargetPlatform.windows ||
+  final isWidePlatform = defaultTargetPlatform == TargetPlatform.windows ||
       defaultTargetPlatform == TargetPlatform.macOS ||
       defaultTargetPlatform == TargetPlatform.linux;
   if (!isWidePlatform) return child;
@@ -146,6 +184,14 @@ String trainerKeyboardHintText({
   required bool settings,
   required bool memorizing,
 }) {
+  final lang = appLanguage.value.name;
+  final phase = settings
+      ? TrainerShortcutPhase.setup
+      : memorizing
+          ? TrainerShortcutPhase.memorize
+          : TrainerShortcutPhase.inactive;
+  final custom = WebKeyboardManager.instance.hintLineForPhase(phase, lang);
+  if (custom.isNotEmpty) return custom;
   if (settings) {
     return AppTexts.translate(const {
       AppLanguage.ru: 'Пробел или Enter — начать тренировку',

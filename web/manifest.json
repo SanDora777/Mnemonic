@@ -6,7 +6,7 @@
     "background_color": "#000000",
     "theme_color": "#000000",
     "description": "Тренажёр искусства памяти: числа, карты, лица, дуэли и академия мнемоники.",
-    "orientation": "portrait-primary",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

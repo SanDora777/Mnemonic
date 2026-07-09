@@ -23,16 +23,32 @@
   <style>
     html, body {
       margin: 0;
+      width: 100%;
       height: 100%;
+      min-height: 100%;
       background: #000000;
       overflow: hidden;
       overscroll-behavior: none;
+    }
+
+  /* Flutter 3 web host — force full browser viewport on desktop/laptop */
+    body > flutter-view,
+    body > flt-glass-pane,
+    flt-scene-host,
+    flt-scene,
+    #flutter_container {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
     }
 
     #loading {
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
       height: 100vh;
       color: #ccff00;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -44,15 +60,30 @@
   <div id="loading">Загрузка Mnemonik…</div>
   <script>
     (function () {
-      var VERSION = '2026-06-13-v4';
+      var VERSION = '2026-06-14-v5';
       var KEY = 'mnemonik_web_version';
-      var RELOAD_FLAG = 'mnemonik_reload_once_v4';
+      var RELOAD_FLAG = 'mnemonik_reload_once_v5';
+
+      function ensureFullViewport() {
+        var nodes = document.querySelectorAll(
+          'flutter-view, flt-glass-pane, flt-scene-host, flt-scene, #flutter_container'
+        );
+        for (var i = 0; i < nodes.length; i++) {
+          nodes[i].style.width = '100%';
+          nodes[i].style.height = '100%';
+          nodes[i].style.maxWidth = 'none';
+        }
+      }
 
       function bootFlutter() {
+        ensureFullViewport();
         var s = document.createElement('script');
         s.src = 'flutter_bootstrap.js';
         s.async = true;
         document.body.appendChild(s);
+        window.addEventListener('resize', ensureFullViewport);
+        setTimeout(ensureFullViewport, 0);
+        setTimeout(ensureFullViewport, 500);
       }
 
       if (localStorage.getItem(KEY) === VERSION) {

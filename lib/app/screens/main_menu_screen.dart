@@ -257,99 +257,95 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final viewportW = constraints.maxWidth;
+                final viewportW = max(constraints.maxWidth, webViewportWidth(context));
                 final wideWeb = isWebDesktopLayout(context, viewportW);
                 final twoCols = webMainMenuUseTwoColumns(viewportW);
                 final menuWidth = webMainMenuMaxWidth(viewportW);
+                final sidePad = webMainMenuSidePadding(viewportW);
 
                 if (wideWeb) {
-                  return Center(
+                  return Align(
+                    alignment: Alignment.topCenter,
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+                      padding: EdgeInsets.symmetric(vertical: 32, horizontal: sidePad),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: menuWidth),
-                        child: DecoratedBox(
-                          decoration: webDesktopPanelDecoration(palette, accent),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(36, 28, 36, 32),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _buildMenuHeader(onSurface, wideWeb: true),
-                                const SizedBox(height: 32),
-                                if (twoCols)
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 5,
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                                          children: [
-                                            _buildXpProgressHeader(onSurface),
-                                            const SizedBox(height: 28),
-                                            ScaleTransition(
-                                              scale: _pulseAnimation,
-                                              child: _buildPrimaryTrainingButton(
-                                                onSurface,
-                                                accent,
-                                                desktop: true,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 24),
-                                            Text(
-                                              AppTexts.get('main_bottom_quote'),
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: onSurface.withOpacity(0.22),
-                                                fontSize: 10,
-                                                letterSpacing: 2.5,
-                                              ),
-                                            ),
-                                          ],
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildMenuHeader(onSurface, wideWeb: true),
+                            const SizedBox(height: 36),
+                            if (twoCols)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 6,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        _buildXpProgressHeader(onSurface),
+                                        const SizedBox(height: 32),
+                                        ScaleTransition(
+                                          scale: _pulseAnimation,
+                                          child: _buildPrimaryTrainingButton(
+                                            onSurface,
+                                            accent,
+                                            desktop: true,
+                                          ),
                                         ),
-                                      ),
-                                        const SizedBox(width: 32),
-                                        Expanded(
-                                          flex: 4,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                                            children: [
-                                              _buildDailyCard(onSurface, accent),
-                                              const SizedBox(height: 16),
-                                              _buildCommunityHubButton(onSurface, accent),
-                                              const SizedBox(height: 16),
-                                              _buildWebQuickNavChips(onSurface, accent),
-                                            ],
+                                        const SizedBox(height: 28),
+                                        Text(
+                                          AppTexts.get('main_bottom_quote'),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: onSurface.withOpacity(0.22),
+                                            fontSize: 11,
+                                            letterSpacing: 2.5,
                                           ),
                                         ),
                                       ],
-                                    )
-                                else
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      _buildXpProgressHeader(onSurface),
-                                      const SizedBox(height: 20),
-                                      _buildDailyCard(onSurface, accent),
-                                      const SizedBox(height: 20),
-                                      ScaleTransition(
-                                        scale: _pulseAnimation,
-                                        child: _buildPrimaryTrainingButton(
-                                          onSurface,
-                                          accent,
-                                          desktop: true,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      _buildCommunityHubButton(onSurface, accent),
-                                      const SizedBox(height: 16),
-                                      _buildWebQuickNavChips(onSurface, accent),
-                                    ],
+                                    ),
                                   ),
-                              ],
-                            ),
-                          ),
+                                  const SizedBox(width: 40),
+                                  Expanded(
+                                    flex: 5,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        _buildDailyCard(onSurface, accent),
+                                        const SizedBox(height: 20),
+                                        _buildCommunityHubButton(onSurface, accent),
+                                        const SizedBox(height: 20),
+                                        _buildWebQuickNavChips(onSurface, accent),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _buildXpProgressHeader(onSurface),
+                                  const SizedBox(height: 24),
+                                  _buildDailyCard(onSurface, accent),
+                                  const SizedBox(height: 24),
+                                  ScaleTransition(
+                                    scale: _pulseAnimation,
+                                    child: _buildPrimaryTrainingButton(
+                                      onSurface,
+                                      accent,
+                                      desktop: true,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  _buildCommunityHubButton(onSurface, accent),
+                                  const SizedBox(height: 20),
+                                  _buildWebQuickNavChips(onSurface, accent),
+                                ],
+                              ),
+                          ],
                         ),
                       ),
                     ),

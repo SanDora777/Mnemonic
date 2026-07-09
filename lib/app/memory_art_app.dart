@@ -48,6 +48,7 @@ class MemoryArtApp extends StatelessWidget {
             });
             return MaterialApp(
               debugShowCheckedModeBanner: false,
+              scrollBehavior: const WebDesktopScrollBehavior(),
               builder: (context, child) {
                 return PaletteThemeTransition(
                   child: DuelInviteGlobalOverlay(

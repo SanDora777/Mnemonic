@@ -832,7 +832,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
   bool _isInputMode = false;
   bool _isChecking = false;
   bool _isPreparingImages = false;
-  final FocusNode _trainerKeyboardFocusNode = FocusNode();
   final ScrollController _memorizerScrollController = ScrollController();
   _NumbersSubMode _numbersSubMode = _NumbersSubMode.standard;
 
@@ -1174,7 +1173,6 @@ class _TrainingScreenState extends State<TrainingScreen> {
     for (var f in _focusNodes) {
       f.dispose();
     }
-    _trainerKeyboardFocusNode.dispose();
     _memorizerScrollController.dispose();
     super.dispose();
   }
@@ -2394,48 +2392,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
     unawaited(CloudSyncService.instance.uploadTrainingHistoryEntry(entry));
   }
 
-  void _requestTrainerKeyboardFocus() {
-    if (!mounted || !trainerKeyboardShortcutsEnabled(context)) return;
-    if (!_isSettingsMode && !_isMemorizing) return;
-    if (_isPreparingImages || _isChecking) return;
-    _trainerKeyboardFocusNode.requestFocus();
-  }
+  void _requestTrainerKeyboardFocus() {}
 
-  KeyEventResult _onTrainerKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (!trainerKeyboardShortcutsEnabled(context)) {
-      return KeyEventResult.ignored;
-    }
-    if (_isPreparingImages) return KeyEventResult.ignored;
-
-    if (_isSettingsMode && !_isDuelRun) {
-      if (!handleTrainerStartKeyDown(event)) {
-        return KeyEventResult.ignored;
-      }
-      if (_isPiMode) {
-        _openPiTrainer();
-      } else {
-        unawaited(_generateData());
-      }
-      return KeyEventResult.handled;
-    }
-
-    if (_isMemorizing) {
-      final handled = handleTrainerMemorizeKeyDown(
-        event: event,
-        onNext: _nextChunk,
-        onPrev: _previousChunk,
-        onFirst: _goToFirstChunk,
-        onRecallNow: () {
-          uiTapClick(UiClickSound.bright);
-          _completeMemorizationToRecall(trimToSeenPrefix: true);
-        },
-        scrollController: _memorizerScrollController,
-      );
-      return handled ? KeyEventResult.handled : KeyEventResult.ignored;
-    }
-
-    return KeyEventResult.ignored;
+  TrainerShortcutPhase _shortcutPhase() {
+    if (_isMemorizing) return TrainerShortcutPhase.memorize;
+    if (_isSettingsMode && !_isDuelRun) return TrainerShortcutPhase.setup;
+    return TrainerShortcutPhase.inactive;
   }
 
   Future<void> _maybePulseElementStatsButton() async {
@@ -2521,14 +2483,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       });
     }
 
-    final contentMaxWidth = _isSettingsMode
-        ? webDesktopContentMaxWidth(context, narrow: 520, medium: 680, wide: 760)
-        : webDesktopContentMaxWidth(context, narrow: 560, medium: 820, wide: 960);
-    trainerBody = webDesktopFrame(
-      context: context,
-      maxWidth: contentMaxWidth,
-      child: trainerBody,
-    );
+    trainerBody = webDesktopFrame(context: context, child: trainerBody);
 
     final keyboardHint = keyboardEnabled
         ? trainerKeyboardHintText(
@@ -2626,10 +2581,27 @@ class _TrainingScreenState extends State<TrainingScreen> {
         );
 
     if (keyboardEnabled) {
-      bodyStack = Focus(
-        focusNode: _trainerKeyboardFocusNode,
-        autofocus: false,
-        onKeyEvent: _onTrainerKeyEvent,
+      bodyStack = TrainerShortcutScope(
+        phase: _shortcutPhase(),
+        autofocus: true,
+        callbacks: TrainerShortcutCallbacks(
+          enabled: keyboardEnabled && !_isPreparingImages && !_isChecking,
+          scrollController: _memorizerScrollController,
+          onStartTraining: () {
+            if (_isPiMode) {
+              _openPiTrainer();
+            } else {
+              unawaited(_generateData());
+            }
+          },
+          onNextChunk: _nextChunk,
+          onPrevChunk: _previousChunk,
+          onFirstChunk: _goToFirstChunk,
+          onRecallNow: () {
+            uiTapClick(UiClickSound.bright);
+            _completeMemorizationToRecall(trimToSeenPrefix: true);
+          },
+        ),
         child: bodyStack,
       );
     }

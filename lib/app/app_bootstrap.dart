@@ -11,6 +11,7 @@ Future<void> main() async {
   ]);
   await ProgressService.instance.init();
   await ProgressService.instance.onAppOpened();
+  await WebKeyboardManager.instance.ensureLoaded();
   await PremiumService.instance.init();
   await ProfileSessionService.instance.loadSessions();
   await QuestService.instance.init();

@@ -2,6 +2,8 @@ part of 'package:flutter_application_1/recovered_app.dart';
 
 enum _PiPhase { setup, memorize, recall, done }
 
+enum _PiSetupTab { training, reading }
+
 class PiTrainerScreen extends StatefulWidget {
   const PiTrainerScreen({super.key});
 
@@ -49,13 +51,16 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
   String _sessionDigits = '';
   List<TextEditingController> _recallControllers = const [];
   List<FocusNode> _recallFocusNodes = const [];
-  final FocusNode _trainerKeyboardFocusNode = FocusNode();
   final ScrollController _memorizerScrollController = ScrollController();
 
   final List<_LociRoute> _trainingLociRoutes = <_LociRoute>[];
   int _selectedTrainingLociRoute = -1;
   int _lociStartIndex = 0;
   List<String> _attachedLociByElement = <String>[];
+
+  _PiSetupTab _setupTab = _PiSetupTab.training;
+  List<PiCheckpoint> _checkpoints = const <PiCheckpoint>[];
+  bool _showLociOverlay = false;
 
   @override
   void initState() {
@@ -71,7 +76,6 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     _chunkSizeController.dispose();
     _startOffsetController.dispose();
     _disposeRecallInputs();
-    _trainerKeyboardFocusNode.dispose();
     _memorizerScrollController.dispose();
     super.dispose();
   }
@@ -131,6 +135,8 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
       _selectedTrainingLociRoute = prefs.getInt(_kLociRouteIndex) ?? -1;
       _lociStartIndex = prefs.getInt(_kLociStartIndex) ?? 0;
       await _loadTrainingLociRoutes();
+      _checkpoints = await PiTrainerPersistence.loadCheckpoints();
+      _showLociOverlay = await PiTrainerPersistence.loadShowLociOverlay();
 
       if (!mounted) return;
       setState(() {
@@ -226,6 +232,158 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     });
     _normalizeElementCount(persist: false);
     unawaited(_persistSetup());
+  }
+
+  String _checkpointDigitLabel(int displayDigit) {
+    switch (appLanguage.value) {
+      case AppLanguage.en:
+        return 'Digit #$displayDigit';
+      case AppLanguage.de:
+        return 'Ziffer Nr. $displayDigit';
+      case AppLanguage.ru:
+        return 'Цифра №$displayDigit';
+    }
+  }
+
+  Future<void> _saveCheckpointAtDigit(int digitIndex, {required String label}) async {
+    final safeIndex = digitIndex.clamp(0, max(0, _totalAvailable)).toInt();
+    final trimmed = label.trim();
+    final existing = _checkpoints.indexWhere((c) => c.digitIndex == safeIndex);
+    final next = List<PiCheckpoint>.from(_checkpoints);
+    if (existing >= 0) {
+      next[existing] = next[existing].copyWith(
+        label: trimmed.isEmpty ? next[existing].label : trimmed,
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+      );
+    } else {
+      next.add(
+        PiCheckpoint(
+          id: 'cp_${safeIndex}_${DateTime.now().millisecondsSinceEpoch}',
+          label: trimmed.isEmpty ? _checkpointDigitLabel(safeIndex + 1) : trimmed,
+          digitIndex: safeIndex,
+          createdAtMs: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+    }
+    await PiTrainerPersistence.saveCheckpoints(next);
+    if (!mounted) return;
+    setState(() => _checkpoints = next);
+  }
+
+  Future<void> _promptSaveCheckpoint() async {
+    final label = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        final controller = TextEditingController(
+          text: _checkpointDigitLabel(_startOffset + 1),
+        );
+        return AlertDialog(
+          backgroundColor: appPalette.value.surface,
+          title: Text(_t(const {
+            AppLanguage.ru: 'Сохранить чекпоинт',
+            AppLanguage.en: 'Save checkpoint',
+            AppLanguage.de: 'Checkpoint speichern',
+          })),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: _t(const {
+                AppLanguage.ru: 'Название (необязательно)',
+                AppLanguage.en: 'Label (optional)',
+                AppLanguage.de: 'Name (optional)',
+              }),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(_t(const {
+                AppLanguage.ru: 'Отмена',
+                AppLanguage.en: 'Cancel',
+                AppLanguage.de: 'Abbrechen',
+              })),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: Text(_t(const {
+                AppLanguage.ru: 'Сохранить',
+                AppLanguage.en: 'Save',
+                AppLanguage.de: 'Speichern',
+              })),
+            ),
+          ],
+        );
+      },
+    );
+    if (label == null) return;
+    await _saveCheckpointAtDigit(_startOffset, label: label);
+  }
+
+  void _jumpToCheckpoint(PiCheckpoint checkpoint) {
+    uiTapClick(UiClickSound.soft);
+    setState(() {
+      _startOffset = checkpoint.digitIndex.clamp(0, max(0, _totalAvailable));
+      _startOffsetController.text = '${_startOffset + 1}';
+    });
+    _normalizeElementCount(persist: false);
+    unawaited(_persistSetup());
+    unawaited(PiTrainerPersistence.saveActiveCheckpointId(checkpoint.id));
+  }
+
+  Future<void> _deleteCheckpoint(PiCheckpoint checkpoint) async {
+    final next = _checkpoints.where((c) => c.id != checkpoint.id).toList(growable: false);
+    await PiTrainerPersistence.saveCheckpoints(next);
+    if (!mounted) return;
+    setState(() => _checkpoints = next);
+  }
+
+  Future<void> _toggleLociOverlay() async {
+    uiTapClick(UiClickSound.soft);
+    final next = !_showLociOverlay;
+    setState(() => _showLociOverlay = next);
+    await PiTrainerPersistence.saveShowLociOverlay(next);
+  }
+
+  List<PiLociMapRow> _lociMapRows() {
+    final route = _activeTrainingLociRoute();
+    if (route == null || route.loci.isEmpty) return const <PiLociMapRow>[];
+    final piRoute = PiLociRoute(name: route.name, loci: List<String>.from(route.loci));
+    final elements = _sessionElements.isNotEmpty
+        ? _sessionElements
+        : _buildSessionElements();
+    if (elements.isEmpty) return const <PiLociMapRow>[];
+    return PiLociBindingService.buildRouteMapRows(
+      route: piRoute,
+      startLocusIndex: _lociStartIndex,
+      elementCount: elements.length,
+      standardDigits: _standardDigits,
+      sessionStartDigitIndex: _startOffset,
+      sessionElements: elements,
+    );
+  }
+
+  int? _overlayHighlightElementIndex() {
+    if (_phase == _PiPhase.memorize && _sessionElements.isNotEmpty) {
+      final chunk = _chunkSize;
+      return (_currentChunkIndex * chunk).clamp(0, _sessionElements.length - 1);
+    }
+    return null;
+  }
+
+  int _readingBlockCount() {
+    final remaining = max(0, _totalAvailable - _startOffset);
+    final maxBlocks = remaining ~/ max(1, _standardDigits);
+    return min(480, max(1, maxBlocks));
+  }
+
+  List<PiDigitBlock> _readingBlocks() {
+    return PiDigitBlock.buildBlocks(
+      startOffset: _startOffset,
+      blockCount: _readingBlockCount(),
+      standardDigits: _standardDigits,
+      lociByElement: _attachedLociByElement,
+    );
   }
 
   void _normalizeStartOffset({required bool persist}) {
@@ -324,18 +482,11 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
   }
 
   List<String> _buildSessionElements() {
-    final count = _elementCount;
-    final needed = count * _standardDigits;
-    final raw = PiDigitsService.instance.digitsInRange(
-      start: _startOffset,
-      count: needed,
+    return PiSessionBuilder.buildElements(
+      startOffset: _startOffset,
+      elementCount: _elementCount,
+      standardDigits: _standardDigits,
     );
-    final out = <String>[];
-    for (var i = 0; i + _standardDigits <= raw.length; i += _standardDigits) {
-      out.add(raw.substring(i, i + _standardDigits));
-      if (out.length >= count) break;
-    }
-    return out;
   }
 
   String _displayForElement(String element) {
@@ -443,6 +594,14 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     if (perfect) {
       final newMastered = max(_masteredCount, _startOffset + _sessionDigits.length);
       await _setMasteredCount(newMastered);
+      await _saveCheckpointAtDigit(
+        newMastered,
+        label: _t(const {
+          AppLanguage.ru: 'Сессия',
+          AppLanguage.en: 'Session',
+          AppLanguage.de: 'Sitzung',
+        }),
+      );
       final prefs = await SharedPreferences.getInstance();
       final prevBest = prefs.getInt(_kBestStreak) ?? 0;
       if (_sessionElements.length > prevBest) {
@@ -513,39 +672,17 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
-  void _requestTrainerKeyboardFocus() {
-    if (!mounted || !trainerKeyboardShortcutsEnabled(context)) return;
-    if (_phase != _PiPhase.setup && _phase != _PiPhase.memorize) return;
-    _trainerKeyboardFocusNode.requestFocus();
-  }
+  void _requestTrainerKeyboardFocus() {}
 
-  KeyEventResult _onTrainerKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    if (!trainerKeyboardShortcutsEnabled(context)) {
-      return KeyEventResult.ignored;
+  TrainerShortcutPhase _shortcutPhase() {
+    switch (_phase) {
+      case _PiPhase.setup:
+        return TrainerShortcutPhase.setup;
+      case _PiPhase.memorize:
+        return TrainerShortcutPhase.memorize;
+      default:
+        return TrainerShortcutPhase.inactive;
     }
-
-    if (_phase == _PiPhase.setup) {
-      if (!handleTrainerStartKeyDown(event)) {
-        return KeyEventResult.ignored;
-      }
-      _startMemorization();
-      return KeyEventResult.handled;
-    }
-
-    if (_phase == _PiPhase.memorize) {
-      final handled = handleTrainerMemorizeKeyDown(
-        event: event,
-        onNext: _nextChunk,
-        onPrev: _previousChunk,
-        onFirst: _goToFirstChunk,
-        onRecallNow: _beginRecall,
-        scrollController: _memorizerScrollController,
-      );
-      return handled ? KeyEventResult.handled : KeyEventResult.ignored;
-    }
-
-    return KeyEventResult.ignored;
   }
 
   @override
@@ -575,21 +712,17 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
                 child: switch (_phase) {
                   _PiPhase.setup => Padding(
                       padding: const EdgeInsets.fromLTRB(0, 10, 0, 20),
-                      child: _buildSetup(onSurface, accent),
+                      child: SizedBox.expand(child: _buildSetup(onSurface, accent)),
                     ),
-                  _PiPhase.memorize => _buildMemorize(onSurface, accent),
-                  _PiPhase.recall => _buildInputArea(onSurface, accent),
+                  _PiPhase.memorize => SizedBox.expand(child: _buildMemorize(onSurface, accent)),
+                  _PiPhase.recall => SizedBox.expand(child: _buildInputArea(onSurface, accent)),
                   _PiPhase.done => _buildDone(onSurface, accent),
                 },
               );
 
-    body = webDesktopFrame(
-      context: context,
-      maxWidth: _phase == _PiPhase.setup
-          ? webDesktopContentMaxWidth(context, narrow: 480, medium: 560, wide: 620)
-          : webDesktopContentMaxWidth(context, narrow: 520, medium: 720, wide: 900),
-      child: body,
-    );
+    body = webDesktopFrame(context: context, child: body);
+
+    final overlayWidth = min(360.0, MediaQuery.sizeOf(context).width * 0.38);
 
     Widget bodyStack = Stack(
       fit: StackFit.expand,
@@ -603,6 +736,43 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
               : 16,
           child: body,
         ),
+        if (_showLociOverlay && _activeTrainingLociRoute() != null)
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: overlayWidth,
+            child: PiLociRouteOverlay(
+              rows: _lociMapRows(),
+              routeName: _activeTrainingLociRoute()!.name,
+              highlightElementIndex: _overlayHighlightElementIndex(),
+              surfaceColor: appPalette.value.surface,
+              borderColor: appPalette.value.border,
+              accentColor: accent,
+              onSurface: onSurface,
+              title: _lociText(
+                ru: 'Карта маршрута',
+                en: 'Route map',
+                de: 'Routenkarte',
+              ),
+              emptyLabel: _lociText(
+                ru: 'Нет привязанных цифр для текущей сессии.',
+                en: 'No digits bound for the current session.',
+                de: 'Keine Ziffern fuer die aktuelle Sitzung gebunden.',
+              ),
+              onClose: _toggleLociOverlay,
+              onRowTap: (row) {
+                if (_phase == _PiPhase.setup && _setupTab == _PiSetupTab.reading) {
+                  setState(() {
+                    _startOffset = row.globalDigitStart;
+                    _startOffsetController.text = '${row.globalDigitStart + 1}';
+                  });
+                  _normalizeElementCount(persist: false);
+                  unawaited(_persistSetup());
+                }
+              },
+            ),
+          ),
         if (keyboardHint.isNotEmpty)
           Positioned(
             left: 0,
@@ -614,10 +784,24 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     );
 
     if (keyboardEnabled) {
-      bodyStack = Focus(
-        focusNode: _trainerKeyboardFocusNode,
-        autofocus: false,
-        onKeyEvent: _onTrainerKeyEvent,
+      bodyStack = TrainerShortcutScope(
+        phase: _shortcutPhase(),
+        autofocus: true,
+        callbacks: TrainerShortcutCallbacks(
+          enabled: keyboardEnabled,
+          scrollController: _memorizerScrollController,
+          onStartTraining: () {
+            if (_maxElementCount > 0) _startMemorization();
+          },
+          onNextChunk: _nextChunk,
+          onPrevChunk: _previousChunk,
+          onFirstChunk: _goToFirstChunk,
+          onRecallNow: _beginRecall,
+          onToggleLociMap:
+              _activeTrainingLociRoute() != null ? _toggleLociOverlay : null,
+          onSaveCheckpoint:
+              _phase == _PiPhase.setup ? _promptSaveCheckpoint : null,
+        ),
         child: bodyStack,
       );
     }
@@ -627,6 +811,21 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Text('π', style: TextStyle(color: onSurface, fontSize: 20, fontWeight: FontWeight.w300)),
+        actions: [
+          if (_activeTrainingLociRoute() != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: PiLociOverlayToggle(
+                active: _showLociOverlay,
+                onTap: _toggleLociOverlay,
+                surfaceColor: appPalette.value.surface,
+                borderColor: appPalette.value.border,
+                accentColor: accent,
+                onSurface: onSurface,
+                label: _lociText(ru: 'Карта', en: 'Map', de: 'Karte'),
+              ),
+            ),
+        ],
       ),
       body: bodyStack,
     );
@@ -653,14 +852,161 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
   }
 
   Widget _buildSetup(Color onSurface, Color accent) {
-    return SingleChildScrollView(
+    return Column(
       key: const ValueKey('pi_setup'),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Column(
+            children: [
+              _buildProgressCard(onSurface),
+              const SizedBox(height: 14),
+              PiCheckpointPanel(
+                checkpoints: _checkpoints,
+                currentDigitIndex: _startOffset,
+                onJumpTo: _jumpToCheckpoint,
+                onDelete: _deleteCheckpoint,
+                onSaveCurrent: _promptSaveCheckpoint,
+                surfaceColor: appPalette.value.surface,
+                borderColor: appPalette.value.border,
+                accentColor: accent,
+                onSurface: onSurface,
+                title: _t(const {
+                  AppLanguage.ru: 'ЧЕКПОИНТЫ',
+                  AppLanguage.en: 'CHECKPOINTS',
+                  AppLanguage.de: 'CHECKPOINTS',
+                }),
+                saveLabel: _t(const {
+                  AppLanguage.ru: '+ Точка',
+                  AppLanguage.en: '+ Mark',
+                  AppLanguage.de: '+ Mark',
+                }),
+                emptyLabel: _t(const {
+                  AppLanguage.ru: 'Отметьте прогресс, чтобы быстро вернуться к нужной цифре.',
+                  AppLanguage.en: 'Mark progress to jump back to any digit quickly.',
+                  AppLanguage.de: 'Markiere Fortschritt, um schnell zu einer Ziffer zu springen.',
+                }),
+                digitLabelBuilder: _checkpointDigitLabel,
+              ),
+              const SizedBox(height: 20),
+              _buildSetupTabSelector(onSurface),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _setupTab == _PiSetupTab.reading
+                ? _buildReadingSetup(onSurface, accent)
+                : _buildTrainingSetup(onSurface, accent),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSetupTabSelector(Color onSurface) {
+    final palette = appPalette.value;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: palette.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: palette.border.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _setupTabItem(
+              _t(const {
+                AppLanguage.ru: 'Тренировка',
+                AppLanguage.en: 'Training',
+                AppLanguage.de: 'Training',
+              }),
+              _PiSetupTab.training,
+              onSurface,
+            ),
+            _setupTabItem(
+              _t(const {
+                AppLanguage.ru: 'Чтение π',
+                AppLanguage.en: 'Read π',
+                AppLanguage.de: 'Pi lesen',
+              }),
+              _PiSetupTab.reading,
+              onSurface,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _setupTabItem(String label, _PiSetupTab tab, Color onSurface) {
+    final isSelected = _setupTab == tab;
+    return GestureDetector(
+      onTap: () {
+        uiTapClick(UiClickSound.soft);
+        setState(() {
+          _setupTab = tab;
+          _rebuildAttachedLoci();
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? appAccentColor.value.withOpacity(0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w300,
+            color: isSelected ? appAccentColor.value : onSurface.withOpacity(0.48),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadingSetup(Color onSurface, Color accent) {
+    return PiReadingDigitsView(
+      key: ValueKey('reading_${_startOffset}_$_standardDigits'),
+      blocks: _readingBlocks(),
+      accentColor: accent,
+      onSurface: onSurface,
+      surfaceColor: appPalette.value.surface,
+      borderColor: appPalette.value.border,
+      highlightGlobalDigitStart: _startOffset,
+      showLoci: _activeTrainingLociRoute() != null,
+      positionLabel: _t(const {
+        AppLanguage.ru: 'ПРОКРУТКА · НАЖМИТЕ БЛОК, ЧТОБЫ НАЧАТЬ С ЦИФРЫ',
+        AppLanguage.en: 'SCROLL · TAP A BLOCK TO START FROM THAT DIGIT',
+        AppLanguage.de: 'SCROLLEN · BLOCK TIPPEN FUER STARTZIFFER',
+      }),
+      onBlockTap: (block) {
+        uiTapClick(UiClickSound.soft);
+        setState(() {
+          _startOffset = block.globalDigitStart;
+          _startOffsetController.text = '${block.globalDigitStart + 1}';
+          _setupTab = _PiSetupTab.training;
+        });
+        _normalizeElementCount(persist: false);
+        unawaited(_persistSetup());
+      },
+    );
+  }
+
+  Widget _buildTrainingSetup(Color onSurface, Color accent) {
+    return SingleChildScrollView(
+      key: const ValueKey('pi_training_setup'),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
           children: [
-            _buildProgressCard(onSurface),
-            const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1112,27 +1458,56 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
     final element = _sessionElements[index];
     final display = _displayForElement(element);
     final showingCode = display != element;
-    if (showingCode) {
-      return Text(
-        display,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: horizontal ? 28 : 40,
-          fontWeight: FontWeight.w100,
-          letterSpacing: horizontal ? 2 : 4,
-          color: onSurface.withOpacity(0.9),
+    final locus = _attachedLocusForIndex(index);
+    final digitStart = _startOffset + index * _standardDigits;
+    final content = showingCode
+        ? Text(
+            display,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: horizontal ? 28 : 40,
+              fontWeight: FontWeight.w100,
+              letterSpacing: horizontal ? 2 : 4,
+              color: onSurface.withOpacity(0.9),
+            ),
+          )
+        : Text(
+            element.toUpperCase(),
+            style: TextStyle(
+              fontSize: horizontal ? 42 : 80,
+              fontWeight: FontWeight.w100,
+              letterSpacing: horizontal ? 4 : 8,
+              color: onSurface.withOpacity(0.9),
+              fontFamily: 'monospace',
+            ),
+          );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '#${digitStart + 1}',
+          style: TextStyle(
+            color: onSurface.withOpacity(0.28),
+            fontSize: 9,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      );
-    }
-    return Text(
-      element.toUpperCase(),
-      style: TextStyle(
-        fontSize: horizontal ? 42 : 80,
-        fontWeight: FontWeight.w100,
-        letterSpacing: horizontal ? 4 : 8,
-        color: onSurface.withOpacity(0.9),
-        fontFamily: 'monospace',
-      ),
+        const SizedBox(height: 4),
+        content,
+        if (locus.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            locus,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: appAccentColor.value.withOpacity(0.55),
+              fontSize: horizontal ? 9 : 10,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1264,7 +1639,7 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
           ],
         ],
         const SizedBox(height: 40),
-        Flexible(
+        Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: ValueListenableBuilder<NumberDisplayDirection>(
@@ -1482,24 +1857,12 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
   }
 
   Future<void> _loadTrainingLociRoutes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kLociRoutesPrefsKey);
-    final parsed = <_LociRoute>[];
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final list = jsonDecode(raw) as List<dynamic>;
-        parsed.addAll(
-          list
-              .map((e) => _LociRoute.fromJson(Map<String, dynamic>.from(e)))
-              .where((e) => e.name.trim().isNotEmpty && e.loci.isNotEmpty),
-        );
-      } catch (_) {}
-    }
+    final parsed = await PiTrainerPersistence.loadLociRoutes();
     if (!mounted) return;
     setState(() {
       _trainingLociRoutes
         ..clear()
-        ..addAll(parsed);
+        ..addAll(parsed.map((r) => _LociRoute(name: r.name, loci: r.loci)));
       if (_trainingLociRoutes.isEmpty) {
         _selectedTrainingLociRoute = -1;
         _lociStartIndex = 0;
@@ -1526,38 +1889,21 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
   }
 
   void _rebuildAttachedLoci() {
-    if (_sessionElements.isEmpty) {
-      final count = _elementCount;
-      if (count <= 0) {
-        _attachedLociByElement = const <String>[];
-        return;
-      }
-      final route = _activeTrainingLociRoute();
-      if (route == null || route.loci.isEmpty) {
-        _attachedLociByElement = List<String>.filled(count, '');
-        return;
-      }
-      final loci = route.loci;
-      final start =
-          _lociStartIndex.clamp(0, max(0, loci.length - 1)).toInt();
-      _attachedLociByElement = List<String>.generate(count, (index) {
-        final locusIndex = (start + index) % loci.length;
-        return loci[locusIndex];
-      }, growable: false);
-      return;
-    }
     final route = _activeTrainingLociRoute();
-    if (route == null || route.loci.isEmpty) {
-      _attachedLociByElement = List<String>.filled(_sessionElements.length, '');
+    final count =
+        _sessionElements.isNotEmpty ? _sessionElements.length : _elementCount;
+    if (count <= 0) {
+      _attachedLociByElement = const <String>[];
       return;
     }
-    final loci = route.loci;
-    final start =
-        _lociStartIndex.clamp(0, max(0, loci.length - 1)).toInt();
-    _attachedLociByElement = List<String>.generate(_sessionElements.length, (index) {
-      final locusIndex = (start + index) % loci.length;
-      return loci[locusIndex];
-    }, growable: false);
+    final piRoute = route == null
+        ? null
+        : PiLociRoute(name: route.name, loci: List<String>.from(route.loci));
+    _attachedLociByElement = PiLociBindingService.lociForElements(
+      route: piRoute,
+      startLocusIndex: _lociStartIndex,
+      elementCount: count,
+    );
   }
 
   String _attachedLocusForIndex(int index) {
@@ -1648,7 +1994,7 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (!hasRoutes)
+                  if (!hasRoutes) ...[
                     Text(
                       _lociText(
                         ru: 'Сначала создай маршрут в меню Loci.',
@@ -1657,7 +2003,24 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
                       ),
                       textAlign: TextAlign.center,
                       style: TextStyle(color: onSurface.withOpacity(0.55), fontSize: 12),
-                    )
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.of(this.context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LociRoutesScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(_lociText(
+                        ru: 'Создать маршрут',
+                        en: 'Create route',
+                        de: 'Route erstellen',
+                      )),
+                    ),
+                  ]
                   else ...[
                     SizedBox(
                       height: 170,

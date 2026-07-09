@@ -46,7 +46,7 @@ class ProgressService {
       lastActiveDate: _readDate(prefs, _kLastActiveDate),
       lastLoginDate: _readDate(prefs, _kLastLoginDate),
     );
-    final normalized = _applyInactivityReset(progress.value, DateTime.now());
+    final normalized = _normalizeStreak(progress.value, DateTime.now());
     if (_isProgressChanged(progress.value, normalized)) {
       progress.value = normalized;
       await _persist(prefs, normalized);
@@ -56,7 +56,7 @@ class ProgressService {
   Future<void> onAppOpened() async {
     final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now();
-    final normalized = _applyInactivityReset(progress.value, now);
+    final normalized = _normalizeStreak(progress.value, now);
     if (_isProgressChanged(progress.value, normalized)) {
       progress.value = normalized;
       await _persist(prefs, normalized);
@@ -146,20 +146,25 @@ class ProgressService {
     final xp = max(local.xp, cloudXp);
     final derived = _deriveFromXp(xp);
 
-    final cloudStreak = (raw['streak'] as num?)?.toInt() ?? 0;
-    final streak = max(local.streak, cloudStreak);
-
     final cloudLastActive = _parseDate(raw['lastActiveDate']);
     final cloudLastLogin = _parseDate(raw['lastLoginDate']);
+    final cloudStreak = (raw['streak'] as num?)?.toInt() ?? 0;
     final lastActiveDate = _latestDate(local.lastActiveDate, cloudLastActive);
     final lastLoginDate = _latestDate(local.lastLoginDate, cloudLastLogin);
+    final streak = _mergeStreakValue(
+      localStreak: local.streak,
+      localLastActive: local.lastActiveDate,
+      cloudStreak: cloudStreak,
+      cloudLastActive: cloudLastActive,
+    );
 
-    final p = derived.copyWith(
+    final merged = derived.copyWith(
       xp: xp,
       streak: streak,
       lastActiveDate: lastActiveDate,
       lastLoginDate: lastLoginDate,
     );
+    final p = _normalizeStreak(merged, DateTime.now());
     progress.value = p;
     await _persist(prefs, p);
   }
@@ -255,13 +260,40 @@ class ProgressService {
     return p.copyWith(streak: 1, lastActiveDate: now);
   }
 
-  UserProgress _applyInactivityReset(UserProgress p, DateTime now) {
+  /// Keeps streak only while the user trained today or yesterday (calendar days).
+  UserProgress _normalizeStreak(UserProgress p, DateTime now) {
+    if (p.streak <= 0) return p.streak == 0 ? p : p.copyWith(streak: 0);
+
     final last = p.lastActiveDate;
-    if (last == null || p.streak <= 0) return p;
-    if (now.difference(last) >= const Duration(hours: 24)) {
-      return p.copyWith(streak: 0);
+    if (last == null) return p.copyWith(streak: 0);
+
+    final today = _dateOnly(now);
+    final lastDay = _dateOnly(last);
+    final diffDays = today.difference(lastDay).inDays;
+    if (diffDays <= 1) return p;
+
+    return p.copyWith(streak: 0);
+  }
+
+  static DateTime _dateOnly(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+  static int _mergeStreakValue({
+    required int localStreak,
+    required DateTime? localLastActive,
+    required int cloudStreak,
+    required DateTime? cloudLastActive,
+  }) {
+    if (localLastActive == null && cloudLastActive == null) {
+      return max(localStreak, cloudStreak);
     }
-    return p;
+    if (localLastActive == null) return cloudStreak;
+    if (cloudLastActive == null) return localStreak;
+
+    final localDay = _dateOnly(localLastActive);
+    final cloudDay = _dateOnly(cloudLastActive);
+    if (localDay.isAfter(cloudDay)) return localStreak;
+    if (cloudDay.isAfter(localDay)) return cloudStreak;
+    return max(localStreak, cloudStreak);
   }
 
   bool _isProgressChanged(UserProgress a, UserProgress b) {
