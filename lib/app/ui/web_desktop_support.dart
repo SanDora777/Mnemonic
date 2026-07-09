@@ -40,22 +40,8 @@ Widget webDesktopShell({required Widget child}) {
     valueListenable: appPalette,
     builder: (context, palette, _) {
       if (!isWebDesktopLayout(context)) return child;
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          color: palette.background,
-          gradient: RadialGradient(
-            center: const Alignment(0, -0.35),
-            radius: 1.15,
-            colors: [
-              palette.accent.withOpacity(0.07),
-              palette.background,
-              const Color(0xFF000000),
-            ],
-            stops: const [0.0, 0.45, 1.0],
-          ),
-        ),
+      return ColoredBox(
+        color: palette.background,
         child: child,
       );
     },
@@ -82,24 +68,52 @@ BoxDecoration webDesktopPanelDecoration(AppPalette palette, Color accent) {
   );
 }
 
-/// Верхнее выравнивание вместо [Center] — контент не прыгает при смене фазы.
+/// Trainer viewport: top-aligned for setup, vertically centered for memorization.
 Widget webTrainerViewport({
   required BuildContext context,
   required Widget child,
   double topPadding = 0,
   double bottomReserve = 0,
+  bool centerVertically = false,
 }) {
+  final padded = Padding(
+    padding: EdgeInsets.only(
+      top: topPadding,
+      bottom: bottomReserve,
+      left: 12,
+      right: 12,
+    ),
+    child: child,
+  );
+
+  if (centerVertically) {
+    return Center(child: padded);
+  }
+
   return Align(
     alignment: Alignment.topCenter,
-    child: Padding(
-      padding: EdgeInsets.only(
-        top: topPadding,
-        bottom: bottomReserve,
-        left: 12,
-        right: 12,
-      ),
-      child: child,
-    ),
+    child: padded,
+  );
+}
+
+/// Scroll area that vertically centers memorization content in the viewport.
+Widget webTrainerMemorizerScroll({
+  required ScrollController controller,
+  required Widget child,
+  Key? key,
+}) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return SingleChildScrollView(
+        key: key,
+        controller: controller,
+        physics: const BouncingScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: child,
+        ),
+      );
+    },
   );
 }
 

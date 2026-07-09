@@ -734,6 +734,7 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
                   (_phase == _PiPhase.setup || _phase == _PiPhase.memorize)
               ? 52
               : 16,
+          centerVertically: _phase == _PiPhase.memorize,
           child: body,
         ),
         if (_showLociOverlay && _activeTrainingLociRoute() != null)
@@ -1354,10 +1355,9 @@ class _PiTrainerScreenState extends State<PiTrainerScreen> {
         final useHorizontalChunkLayout =
             numberDisplayDirection.value == NumberDisplayDirection.leftToRight;
         final visibleIndices = _memorizerVisibleIndices(start: start, end: end);
-        return SingleChildScrollView(
+        return webTrainerMemorizerScroll(
           controller: _memorizerScrollController,
           key: const ValueKey('pi_memorize'),
-          physics: const BouncingScrollPhysics(),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

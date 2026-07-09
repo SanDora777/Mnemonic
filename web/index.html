@@ -45,14 +45,20 @@
     }
 
     #loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
       display: flex;
       align-items: center;
       justify-content: center;
       width: 100%;
-      height: 100vh;
+      height: 100%;
+      margin: 0;
+      background: #000000;
       color: #ccff00;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       letter-spacing: 0.04em;
+      pointer-events: none;
     }
   </style>
 </head>
@@ -60,9 +66,17 @@
   <div id="loading">Загрузка Mnemonik…</div>
   <script>
     (function () {
-      var VERSION = '2026-06-14-v5';
+      var VERSION = '2026-07-09-v6';
       var KEY = 'mnemonik_web_version';
-      var RELOAD_FLAG = 'mnemonik_reload_once_v5';
+      var RELOAD_FLAG = 'mnemonik_reload_once_v6';
+
+      function hideLoading() {
+        var el = document.getElementById('loading');
+        if (el) el.remove();
+      }
+
+      window.addEventListener('flutter-first-frame', hideLoading);
+      document.addEventListener('flutter-first-frame', hideLoading);
 
       function ensureFullViewport() {
         var nodes = document.querySelectorAll(
@@ -80,6 +94,9 @@
         var s = document.createElement('script');
         s.src = 'flutter_bootstrap.js';
         s.async = true;
+        s.onload = function () {
+          setTimeout(hideLoading, 12000);
+        };
         document.body.appendChild(s);
         window.addEventListener('resize', ensureFullViewport);
         setTimeout(ensureFullViewport, 0);

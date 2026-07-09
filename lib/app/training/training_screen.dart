@@ -2534,6 +2534,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               bottomReserve: keyboardEnabled && (_isSettingsMode || _isMemorizing)
                   ? 52
                   : 16,
+              centerVertically: _isMemorizing,
               child: trainerBody,
             ),
             if (_isPreparingImages)
@@ -4809,12 +4810,11 @@ class _TrainingScreenState extends State<TrainingScreen> {
         final useHorizontalChunkLayout = _displayDirectionApplies() &&
             numberDisplayDirection.value == NumberDisplayDirection.leftToRight;
         final visibleIndices = _memorizerVisibleIndices(start: start, end: end);
-        return SingleChildScrollView(
+        return webTrainerMemorizerScroll(
           controller: _memorizerScrollController,
-          physics: const BouncingScrollPhysics(),
+          key: key,
           child: Column(
-            key: key,
-            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 12),
               Row(
