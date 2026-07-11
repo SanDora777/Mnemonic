@@ -1102,10 +1102,14 @@ class _TrainingScreenState extends State<TrainingScreen> {
     });
     try {
       await _finalizeAndPersistResults();
-    } catch (_) {
-      if (mounted) {
+    } catch (e) {
+      debugPrint('Session finalize error: $e');
+      if (mounted && CloudSyncService.instance.isSignedIn) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppTexts.get('cloud_save_failed'))),
+          SnackBar(
+            content: Text(AppTexts.get('cloud_save_failed')),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -2454,7 +2458,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
             FadeTransition(opacity: animation, child: child),
         layoutBuilder: (currentChild, previousChildren) {
           return Stack(
-            alignment: Alignment.topCenter,
+            fit: _isMemorizing ? StackFit.expand : StackFit.loose,
+            alignment:
+                _isMemorizing ? Alignment.center : Alignment.topCenter,
             children: [
               ...previousChildren,
               if (currentChild != null) currentChild,
@@ -2464,7 +2470,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
         child: _isSettingsMode
             ? _buildSettings(key: const ValueKey('settings'))
             : (_isMemorizing
-                ? _buildMemorizer(key: const ValueKey('memorizer'))
+                ? SizedBox.expand(
+                    child: _buildMemorizer(key: const ValueKey('memorizer')),
+                  )
                 : _buildInputArea(key: const ValueKey('input'))),
       );
     }

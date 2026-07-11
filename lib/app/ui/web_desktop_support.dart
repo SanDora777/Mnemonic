@@ -20,7 +20,9 @@ bool isWebDesktopLayout(BuildContext context, [double? width]) {
 
 double webMainMenuMaxWidth(double viewportWidth) {
   if (!kIsWeb || viewportWidth < 520) return double.infinity;
-  return double.infinity;
+  if (viewportWidth >= 1280) return 720;
+  if (viewportWidth >= 900) return 640;
+  return 560;
 }
 
 double webMainMenuSidePadding(double viewportWidth) {

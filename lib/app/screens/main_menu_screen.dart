@@ -259,7 +259,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
               builder: (context, constraints) {
                 final viewportW = max(constraints.maxWidth, webViewportWidth(context));
                 final wideWeb = isWebDesktopLayout(context, viewportW);
-                final twoCols = webMainMenuUseTwoColumns(viewportW);
                 final menuWidth = webMainMenuMaxWidth(viewportW);
                 final sidePad = webMainMenuSidePadding(viewportW);
 
@@ -267,84 +266,19 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                   return Align(
                     alignment: Alignment.topCenter,
                     child: SingleChildScrollView(
-                      padding: EdgeInsets.symmetric(vertical: 32, horizontal: sidePad),
+                      padding: EdgeInsets.symmetric(vertical: 36, horizontal: sidePad),
                       child: ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: menuWidth),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _buildMenuHeader(onSurface, wideWeb: true),
-                            const SizedBox(height: 36),
-                            if (twoCols)
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 6,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        _buildXpProgressHeader(onSurface),
-                                        const SizedBox(height: 32),
-                                        ScaleTransition(
-                                          scale: _pulseAnimation,
-                                          child: _buildPrimaryTrainingButton(
-                                            onSurface,
-                                            accent,
-                                            desktop: true,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 28),
-                                        Text(
-                                          AppTexts.get('main_bottom_quote'),
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            color: onSurface.withOpacity(0.22),
-                                            fontSize: 11,
-                                            letterSpacing: 2.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 40),
-                                  Expanded(
-                                    flex: 5,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                                      children: [
-                                        _buildDailyCard(onSurface, accent),
-                                        const SizedBox(height: 20),
-                                        _buildCommunityHubButton(onSurface, accent),
-                                        const SizedBox(height: 20),
-                                        _buildWebQuickNavChips(onSurface, accent),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              )
-                            else
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildXpProgressHeader(onSurface),
-                                  const SizedBox(height: 24),
-                                  _buildDailyCard(onSurface, accent),
-                                  const SizedBox(height: 24),
-                                  ScaleTransition(
-                                    scale: _pulseAnimation,
-                                    child: _buildPrimaryTrainingButton(
-                                      onSurface,
-                                      accent,
-                                      desktop: true,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
-                                  _buildCommunityHubButton(onSurface, accent),
-                                  const SizedBox(height: 20),
-                                  _buildWebQuickNavChips(onSurface, accent),
-                                ],
-                              ),
+                            const SizedBox(height: 40),
+                            _buildWebPrimarySection(onSurface, accent),
+                            const SizedBox(height: 32),
+                            _buildWebSectionDivider(onSurface),
+                            const SizedBox(height: 28),
+                            _buildWebSecondarySection(onSurface, accent),
                           ],
                         ),
                       ),
@@ -403,6 +337,83 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
+  Widget _buildWebPrimarySection(Color onSurface, Color accent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildXpProgressHeader(onSurface),
+        const SizedBox(height: 28),
+        ScaleTransition(
+          scale: _pulseAnimation,
+          child: _buildPrimaryTrainingButton(
+            onSurface,
+            accent,
+            desktop: true,
+          ),
+        ),
+        const SizedBox(height: 22),
+        Text(
+          AppTexts.get('main_bottom_quote'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: onSurface.withOpacity(0.2),
+            fontSize: 10,
+            letterSpacing: 3.2,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebSectionDivider(Color onSurface) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            color: onSurface.withOpacity(0.08),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text(
+            AppTexts.translate(const {
+              AppLanguage.ru: 'ПАНЕЛЬ',
+              AppLanguage.en: 'PANEL',
+              AppLanguage.de: 'PANEL',
+            }),
+            style: TextStyle(
+              color: onSurface.withOpacity(0.22),
+              fontSize: 9,
+              letterSpacing: 3.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: onSurface.withOpacity(0.08),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebSecondarySection(Color onSurface, Color accent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildDailyCard(onSurface, accent, compact: true),
+        const SizedBox(height: 14),
+        _buildCommunityHubButton(onSurface, accent, compact: true),
+        const SizedBox(height: 16),
+        _buildWebQuickNavRow(onSurface, accent),
+      ],
+    );
+  }
+
   Widget _buildMenuHeader(Color onSurface, {required bool wideWeb}) {
     final accent = appAccentColor.value;
     return Row(
@@ -444,68 +455,80 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildWebQuickNavChips(Color onSurface, Color accent) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+  Widget _buildWebQuickNavRow(Color onSurface, Color accent) {
+    final items = <({IconData icon, String label, VoidCallback onTap, bool highlight})>[
+      (
+        icon: Icons.emoji_events_outlined,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Рейтинг',
+          AppLanguage.en: 'Ranks',
+          AppLanguage.de: 'Rang',
+        }),
+        onTap: () => _openScreen(const LeaderboardScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.lightbulb_outline_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Техники',
+          AppLanguage.en: 'Tips',
+          AppLanguage.de: 'Tipps',
+        }),
+        onTap: () => _openScreen(const TechniquesScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.flash_on_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Дуэли',
+          AppLanguage.en: 'Duels',
+          AppLanguage.de: 'Duelle',
+        }),
+        onTap: () => _openScreen(const DuelLobbyScreen()),
+        highlight: true,
+      ),
+      (
+        icon: Icons.bar_chart_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Статистика',
+          AppLanguage.en: 'Stats',
+          AppLanguage.de: 'Statistik',
+        }),
+        onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.task_alt_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Квесты',
+          AppLanguage.en: 'Quests',
+          AppLanguage.de: 'Quests',
+        }),
+        onTap: () => _openScreen(const QuestsScreen()),
+        highlight: false,
+      ),
+    ];
+
+    return Row(
       children: [
-        _webNavChip(
-          icon: Icons.emoji_events_outlined,
-          label: AppTexts.translate(const {
-            AppLanguage.ru: 'Рейтинг',
-            AppLanguage.en: 'Ranks',
-            AppLanguage.de: 'Rang',
-          }),
-          onTap: () => _openScreen(const LeaderboardScreen()),
-          onSurface: onSurface,
-        ),
-        _webNavChip(
-          icon: Icons.lightbulb_outline_rounded,
-          label: AppTexts.translate(const {
-            AppLanguage.ru: 'Техники',
-            AppLanguage.en: 'Tips',
-            AppLanguage.de: 'Tipps',
-          }),
-          onTap: () => _openScreen(const TechniquesScreen()),
-          onSurface: onSurface,
-        ),
-        _webNavChip(
-          icon: Icons.flash_on_rounded,
-          label: AppTexts.translate(const {
-            AppLanguage.ru: 'Дуэли',
-            AppLanguage.en: 'Duels',
-            AppLanguage.de: 'Duelle',
-          }),
-          onTap: () => _openScreen(const DuelLobbyScreen()),
-          onSurface: onSurface,
-          highlight: true,
-          accent: accent,
-        ),
-        _webNavChip(
-          icon: Icons.bar_chart_rounded,
-          label: AppTexts.translate(const {
-            AppLanguage.ru: 'Статистика',
-            AppLanguage.en: 'Stats',
-            AppLanguage.de: 'Statistik',
-          }),
-          onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
-          onSurface: onSurface,
-        ),
-        _webNavChip(
-          icon: Icons.task_alt_rounded,
-          label: AppTexts.translate(const {
-            AppLanguage.ru: 'Квесты',
-            AppLanguage.en: 'Quests',
-            AppLanguage.de: 'Quests',
-          }),
-          onTap: () => _openScreen(const QuestsScreen()),
-          onSurface: onSurface,
-        ),
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: _webNavTile(
+              icon: items[i].icon,
+              label: items[i].label,
+              onTap: items[i].onTap,
+              onSurface: onSurface,
+              highlight: items[i].highlight,
+              accent: accent,
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _webNavChip({
+  Widget _webNavTile({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -518,36 +541,39 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
       color: Colors.transparent,
       child: InkWell(
         onTap: withUiTap(onTap),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
             color: highlight
-                ? chipAccent.withOpacity(0.12)
-                : appPalette.value.card.withOpacity(0.85),
-            borderRadius: BorderRadius.circular(14),
+                ? chipAccent.withOpacity(0.1)
+                : appPalette.value.card.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: highlight
-                  ? chipAccent.withOpacity(0.45)
-                  : appPalette.value.border.withOpacity(0.35),
+                  ? chipAccent.withOpacity(0.42)
+                  : appPalette.value.border.withOpacity(0.32),
             ),
           ),
-          child: Row(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
                 icon,
                 size: 18,
-                color: highlight ? chipAccent : onSurface.withOpacity(0.75),
+                color: highlight ? chipAccent : onSurface.withOpacity(0.72),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 6),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: onSurface.withOpacity(0.82),
-                  fontSize: 12,
+                  color: onSurface.withOpacity(0.78),
+                  fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  letterSpacing: 0.2,
+                  letterSpacing: 0.15,
                 ),
               ),
             ],
@@ -582,7 +608,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildDailyCard(Color onSurface, Color accent) {
+  Widget _buildDailyCard(Color onSurface, Color accent, {bool compact = false}) {
     return ValueListenableBuilder<QuestState>(
       valueListenable: QuestService.instance.state,
       builder: (context, questState, _) {
@@ -625,11 +651,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
           onTap: () => _openScreen(const QuestsScreen()),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(compact ? 14 : 16),
             decoration: BoxDecoration(
               color: appPalette.value.surface,
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: appPalette.value.border.withOpacity(0.45)),
+              borderRadius: BorderRadius.circular(compact ? 14 : 26),
+              border: Border.all(color: appPalette.value.border.withOpacity(0.4)),
             ),
             child: Column(
               children: [
@@ -757,7 +783,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildCommunityHubButton(Color onSurface, Color accent) {
+  Widget _buildCommunityHubButton(Color onSurface, Color accent,
+      {bool compact = false}) {
     return ValueListenableBuilder<bool>(
       valueListenable: NewsService.instance.hasUnread,
       builder: (context, hasUnread, _) {
@@ -768,14 +795,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 14 : 16,
+                  vertical: compact ? 12 : 14,
+                ),
                 decoration: BoxDecoration(
                   color: appPalette.value.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withOpacity(0.38)),
-                  boxShadow: [
-                    BoxShadow(color: accent.withOpacity(0.12), blurRadius: 14, spreadRadius: 0.5),
-                  ],
+                  borderRadius: BorderRadius.circular(compact ? 14 : 20),
+                  border: Border.all(color: accent.withOpacity(0.34)),
                 ),
                 child: Row(
                   children: [
