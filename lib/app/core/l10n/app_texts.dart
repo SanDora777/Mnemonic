@@ -50,6 +50,21 @@ class AppTexts {
       AppLanguage.en: 'YOUR BRAIN IS CAPABLE OF MORE',
       AppLanguage.de: 'DEIN GEHIRN KANN MEHR',
     },
+    'main_last_session': {
+      AppLanguage.ru: 'ПОСЛЕДНЯЯ ТРЕНИРОВКА',
+      AppLanguage.en: 'LAST SESSION',
+      AppLanguage.de: 'LETZTE SESSION',
+    },
+    'main_panel': {
+      AppLanguage.ru: 'ПАНЕЛЬ',
+      AppLanguage.en: 'PANEL',
+      AppLanguage.de: 'PANEL',
+    },
+    'main_tip_label': {
+      AppLanguage.ru: 'СОВЕТ ДНЯ',
+      AppLanguage.en: 'TIP OF THE DAY',
+      AppLanguage.de: 'TIPP DES TAGES',
+    },
     'trainer': {
       AppLanguage.ru: 'Тренажер памяти',
       AppLanguage.en: 'Memory Trainer',

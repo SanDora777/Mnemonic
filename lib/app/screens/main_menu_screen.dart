@@ -10,6 +10,46 @@ class MainMenuScreen extends StatefulWidget {
 class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  TrainingHistoryEntry? _latestTraining;
+  bool _loadingLatestTraining = true;
+
+  static const List<Map<AppLanguage, String>> _dailyTips = [
+    {
+      AppLanguage.ru: 'Разбивай длинные последовательности на блоки по 3–4 элемента.',
+      AppLanguage.en: 'Split long sequences into chunks of 3–4 items.',
+      AppLanguage.de: 'Teile lange Folgen in Blöcke à 3–4 Elemente.',
+    },
+    {
+      AppLanguage.ru: 'Яркие и абсурдные образы запоминаются быстрее обычных.',
+      AppLanguage.en: 'Vivid, absurd images stick faster than plain ones.',
+      AppLanguage.de: 'Lebendige, absurde Bilder bleiben schneller hängen.',
+    },
+    {
+      AppLanguage.ru: 'Повторяй коды чисел, пока они не станут автоматическими.',
+      AppLanguage.en: 'Drill number codes until they feel automatic.',
+      AppLanguage.de: 'Übe Zahlencodes, bis sie automatisch wirken.',
+    },
+    {
+      AppLanguage.ru: 'Короткая ежедневная сессия лучше редкой длинной.',
+      AppLanguage.en: 'A short daily session beats a rare long one.',
+      AppLanguage.de: 'Kurz täglich trainieren schlägt selten lange Sessions.',
+    },
+    {
+      AppLanguage.ru: 'Связывай новый образ с уже знакомым маршрутом.',
+      AppLanguage.en: 'Link new images to a route you already know.',
+      AppLanguage.de: 'Verknüpfe neue Bilder mit einer bekannten Route.',
+    },
+    {
+      AppLanguage.ru: 'Сначала запоминай, потом проверяй — не наоборот.',
+      AppLanguage.en: 'Memorize first, then recall — not the other way.',
+      AppLanguage.de: 'Erst merken, dann abrufen — nicht umgekehrt.',
+    },
+    {
+      AppLanguage.ru: 'Дыши ровно во время запоминания — темп стабильнее.',
+      AppLanguage.en: 'Breathe steadily while memorizing — pace stays stable.',
+      AppLanguage.de: 'Atme ruhig beim Merken — das Tempo bleibt stabil.',
+    },
+  ];
 
   Set<DateTime> _collectTrainingDays(Map<String, Object?> data) {
     final out = <DateTime>{};
@@ -218,6 +258,24 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     _pulseAnimation = Tween<double>(begin: 0.97, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    unawaited(_loadLatestTraining());
+  }
+
+  Future<void> _loadLatestTraining() async {
+    TrainingHistoryEntry? latest;
+    for (final mode in trainingHistoryModes) {
+      final entries = await TrainingHistoryService.instance.loadMode(mode);
+      if (entries.isEmpty) continue;
+      final candidate = entries.first;
+      if (latest == null || candidate.date.isAfter(latest.date)) {
+        latest = candidate;
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _latestTraining = latest;
+      _loadingLatestTraining = false;
+    });
   }
 
   @override
@@ -241,6 +299,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
         transitionsBuilder: (context, anim, _, child) => FadeTransition(opacity: anim, child: child),
       ),
     );
+    if (mounted) unawaited(_loadLatestTraining());
   }
 
   @override
@@ -272,7 +331,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _buildMenuHeader(onSurface, wideWeb: true),
+                            _buildMenuHeader(onSurface, accent, wideWeb: true),
                             const SizedBox(height: 40),
                             _buildWebPrimarySection(onSurface, accent),
                             const SizedBox(height: 32),
@@ -286,48 +345,73 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                   );
                 }
 
-                return Align(
-                  alignment: Alignment.topCenter,
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildMenuHeader(onSurface, wideWeb: false),
-                            const SizedBox(height: 18),
-                            _buildXpProgressHeader(onSurface),
-                            const SizedBox(height: 18),
-                            _buildDailyCard(onSurface, accent),
-                            const SizedBox(height: 22),
-                            ScaleTransition(
-                              scale: _pulseAnimation,
-                              child: _buildPrimaryTrainingButton(onSurface, accent),
-                            ),
-                            const SizedBox(height: 18),
-                            _buildCommunityHubButton(onSurface, accent),
-                            const SizedBox(height: 18),
-                            _buildQuickNavRow(),
-                            const Spacer(),
-                            const SizedBox(height: 14),
-                            Center(
-                              child: Text(
-                                AppTexts.get('main_bottom_quote'),
-                                style: TextStyle(
-                                  color: onSurface.withOpacity(0.2),
-                                  fontSize: 9,
-                                  letterSpacing: 3,
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ColoredBox(color: palette.background),
+                    if (palette.background.computeLuminance() < 0.5)
+                      IgnorePointer(
+                        child: Opacity(
+                          opacity: 0.16,
+                          child: const AnimatedBackground(),
+                        ),
+                      )
+                    else
+                      IgnorePointer(child: _buildAmbientGlow(accent)),
+                    SafeArea(
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildMenuHeader(onSurface, accent, wideWeb: false),
+                                const SizedBox(height: 20),
+                                _buildMiniStatRow(onSurface, accent),
+                                const SizedBox(height: 14),
+                                _buildXpProgressHeader(onSurface),
+                                const SizedBox(height: 18),
+                                _buildDailyCard(onSurface, accent),
+                                if (_loadingLatestTraining)
+                                  const SizedBox(height: 18)
+                                else if (_latestTraining != null) ...[
+                                  const SizedBox(height: 18),
+                                  _buildLastTrainingCard(onSurface, accent, _latestTraining!),
+                                ],
+                                const SizedBox(height: 22),
+                                _buildPrimaryTrainingGlow(accent, onSurface),
+                                const SizedBox(height: 18),
+                                _buildCommunityHubButton(onSurface, accent),
+                                const SizedBox(height: 22),
+                                _buildSectionDivider(onSurface),
+                                const SizedBox(height: 16),
+                                _buildQuickNavRow(onSurface, accent),
+                                const SizedBox(height: 28),
+                                _buildDailyTip(onSurface, accent),
+                                const SizedBox(height: 8),
+                                Center(
+                                  child: Text(
+                                    AppTexts.get('main_bottom_quote'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: onSurface.withOpacity(0.38),
+                                      fontSize: 10,
+                                      letterSpacing: 2.4,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 12),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
@@ -378,11 +462,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
-            AppTexts.translate(const {
-              AppLanguage.ru: 'ПАНЕЛЬ',
-              AppLanguage.en: 'PANEL',
-              AppLanguage.de: 'PANEL',
-            }),
+            AppTexts.get('main_panel'),
             style: TextStyle(
               color: onSurface.withOpacity(0.22),
               fontSize: 9,
@@ -414,32 +494,380 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildMenuHeader(Color onSurface, {required bool wideWeb}) {
-    final accent = appAccentColor.value;
+  Widget _buildAmbientGlow(Color accent) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: const Alignment(0.2, -0.65),
+          radius: 1.1,
+          colors: [
+            accent.withOpacity(0.08),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      child: const SizedBox.expand(),
+    );
+  }
+
+  Widget _buildSectionDivider(Color onSurface) {
+    return Row(
+      children: [
+        Expanded(child: Container(height: 1, color: onSurface.withOpacity(0.08))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text(
+            AppTexts.get('main_panel'),
+            style: TextStyle(
+              color: onSurface.withOpacity(0.28),
+              fontSize: 9,
+              letterSpacing: 3.2,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(child: Container(height: 1, color: onSurface.withOpacity(0.08))),
+      ],
+    );
+  }
+
+  Widget _buildDailyTip(Color onSurface, Color accent) {
+    final tip = _dailyTips[DateTime.now().day % _dailyTips.length];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: appPalette.value.surface.withOpacity(0.72),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: appPalette.value.border.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            AppTexts.get('main_tip_label'),
+            style: TextStyle(
+              color: accent.withOpacity(0.85),
+              fontSize: 9,
+              letterSpacing: 2.2,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            AppTexts.translate(tip),
+            style: TextStyle(
+              color: onSurface.withOpacity(0.72),
+              fontSize: 12,
+              height: 1.45,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryTrainingGlow(Color accent, Color onSurface) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        Positioned(
+          left: 24,
+          right: 24,
+          top: 10,
+          bottom: 10,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withOpacity(0.32),
+                  blurRadius: 36,
+                  spreadRadius: -6,
+                ),
+              ],
+            ),
+          ),
+        ),
+        ScaleTransition(
+          scale: _pulseAnimation,
+          child: _buildPrimaryTrainingButton(onSurface, accent),
+        ),
+      ],
+    );
+  }
+
+  String _modeLabel(String mode) {
+    switch (mode) {
+      case 'binary':
+        return AppTexts.get('mode_binary');
+      case 'words':
+        return AppTexts.get('mode_words');
+      case 'images':
+        return AppTexts.get('mode_photo');
+      case 'cards':
+        return AppTexts.get('mode_cards');
+      case 'faces':
+        return AppTexts.get('mode_faces');
+      default:
+        return AppTexts.get('mode_numbers');
+    }
+  }
+
+  String _formatSessionAge(DateTime date) {
+    final now = DateTime.now();
+    final sameDay = (DateTime a, DateTime b) =>
+        a.year == b.year && a.month == b.month && a.day == b.day;
+    if (sameDay(date, now)) {
+      return AppTexts.translate(const {
+        AppLanguage.ru: 'сегодня',
+        AppLanguage.en: 'today',
+        AppLanguage.de: 'heute',
+      });
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (sameDay(date, yesterday)) {
+      return AppTexts.translate(const {
+        AppLanguage.ru: 'вчера',
+        AppLanguage.en: 'yesterday',
+        AppLanguage.de: 'gestern',
+      });
+    }
+    final dd = date.day.toString().padLeft(2, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    return '$dd.$mm';
+  }
+
+  Widget _buildLastTrainingCard(Color onSurface, Color accent, TrainingHistoryEntry entry) {
+    final accuracy = (entry.accuracy * 100).round();
+    return GestureDetector(
+      onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: appPalette.value.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: appPalette.value.border.withOpacity(0.38)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accent.withOpacity(0.12),
+                border: Border.all(color: accent.withOpacity(0.35)),
+              ),
+              child: Icon(Icons.history_rounded, color: accent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    AppTexts.get('main_last_session'),
+                    style: TextStyle(
+                      color: onSurface.withOpacity(0.42),
+                      fontSize: 9,
+                      letterSpacing: 1.8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _modeLabel(entry.mode),
+                    style: TextStyle(
+                      color: onSurface.withOpacity(0.9),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$accuracy%',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatSessionAge(entry.date),
+                  style: TextStyle(
+                    color: onSurface.withOpacity(0.45),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniStatRow(Color onSurface, Color accent) {
+    return ValueListenableBuilder(
+      valueListenable: ProgressService.instance.progress,
+      builder: (context, p, _) {
+        final levelTitle = ProgressService.instance.getLevelTitleLabel();
+        return Row(
+          children: [
+            Expanded(
+              child: _miniStatChip(
+                onSurface: onSurface,
+                accent: accent,
+                icon: Icons.local_fire_department_rounded,
+                value: '${p.streak}',
+                label: AppTexts.translate(const {
+                  AppLanguage.ru: 'СТРИК',
+                  AppLanguage.en: 'STREAK',
+                  AppLanguage.de: 'SERIE',
+                }),
+                onTap: () => _openStreakCalendar(appPalette.value, p.streak),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _miniStatChip(
+                onSurface: onSurface,
+                accent: accent,
+                icon: Icons.bolt_rounded,
+                value: '${p.xp}',
+                label: 'XP',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _miniStatChip(
+                onSurface: onSurface,
+                accent: accent,
+                icon: Icons.psychology_alt_outlined,
+                value: 'LV ${p.level}',
+                label: levelTitle.toUpperCase(),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _miniStatChip({
+    required Color onSurface,
+    required Color accent,
+    required IconData icon,
+    required String value,
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: appPalette.value.surface.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: appPalette.value.border.withOpacity(0.38)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 14, color: accent.withOpacity(0.9)),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: onSurface.withOpacity(0.92),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: onSurface.withOpacity(0.42),
+              fontSize: 8,
+              letterSpacing: 0.8,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return chip;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: withUiTap(onTap),
+        borderRadius: BorderRadius.circular(14),
+        child: chip,
+      ),
+    );
+  }
+
+  Widget _buildMenuHeader(Color onSurface, Color accent, {required bool wideWeb}) {
+    final titleStyle = GoogleFonts.spaceGrotesk(
+      fontSize: wideWeb ? 34 : 30,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.6,
+      height: 1.05,
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        Container(
+          width: wideWeb ? 48 : 44,
+          height: wideWeb ? 48 : 44,
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accent.withOpacity(0.38)),
+          ),
+          child: Icon(Icons.psychology_alt_rounded, color: accent, size: wideWeb ? 26 : 24),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Mnemonica',
-                style: TextStyle(
-                  color: onSurface.withOpacity(0.95),
-                  fontSize: wideWeb ? 36 : 38,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 0.4,
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [
+                    onSurface.withOpacity(0.98),
+                    accent.withOpacity(0.92),
+                  ],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ).createShader(bounds),
+                child: Text(
+                  AppTexts.get('app_title'),
+                  style: titleStyle,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 AppTexts.get('app_subtitle'),
                 style: TextStyle(
-                  color: accent.withOpacity(0.8),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: 2.4,
+                  color: accent.withOpacity(0.78),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.6,
                 ),
               ),
             ],
@@ -456,58 +884,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
   }
 
   Widget _buildWebQuickNavRow(Color onSurface, Color accent) {
-    final items = <({IconData icon, String label, VoidCallback onTap, bool highlight})>[
-      (
-        icon: Icons.emoji_events_outlined,
-        label: AppTexts.translate(const {
-          AppLanguage.ru: 'Рейтинг',
-          AppLanguage.en: 'Ranks',
-          AppLanguage.de: 'Rang',
-        }),
-        onTap: () => _openScreen(const LeaderboardScreen()),
-        highlight: false,
-      ),
-      (
-        icon: Icons.lightbulb_outline_rounded,
-        label: AppTexts.translate(const {
-          AppLanguage.ru: 'Техники',
-          AppLanguage.en: 'Tips',
-          AppLanguage.de: 'Tipps',
-        }),
-        onTap: () => _openScreen(const TechniquesScreen()),
-        highlight: false,
-      ),
-      (
-        icon: Icons.flash_on_rounded,
-        label: AppTexts.translate(const {
-          AppLanguage.ru: 'Дуэли',
-          AppLanguage.en: 'Duels',
-          AppLanguage.de: 'Duelle',
-        }),
-        onTap: () => _openScreen(const DuelLobbyScreen()),
-        highlight: true,
-      ),
-      (
-        icon: Icons.bar_chart_rounded,
-        label: AppTexts.translate(const {
-          AppLanguage.ru: 'Статистика',
-          AppLanguage.en: 'Stats',
-          AppLanguage.de: 'Statistik',
-        }),
-        onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
-        highlight: false,
-      ),
-      (
-        icon: Icons.task_alt_rounded,
-        label: AppTexts.translate(const {
-          AppLanguage.ru: 'Квесты',
-          AppLanguage.en: 'Quests',
-          AppLanguage.de: 'Quests',
-        }),
-        onTap: () => _openScreen(const QuestsScreen()),
-        highlight: false,
-      ),
-    ];
+    final items = _quickNavItems();
 
     return Row(
       children: [
@@ -583,28 +960,133 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-  Widget _buildQuickNavRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _quickNavButton(
-            icon: Icons.emoji_events_outlined,
-            onTap: () => _openScreen(const LeaderboardScreen())),
-        _quickNavButton(
-            icon: Icons.lightbulb_outline_rounded,
-            onTap: () => _openScreen(const TechniquesScreen())),
-        _quickNavButton(
-          icon: Icons.flash_on_rounded,
-          onTap: () => _openScreen(const DuelLobbyScreen()),
-          highlight: true,
+  Widget _buildQuickNavRow(Color onSurface, Color accent) {
+    final items = _quickNavItems();
+    return SizedBox(
+      height: 72,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return _mobileNavTile(
+            icon: item.icon,
+            label: item.label,
+            onTap: item.onTap,
+            onSurface: onSurface,
+            accent: accent,
+            highlight: item.highlight,
+          );
+        },
+      ),
+    );
+  }
+
+  List<({IconData icon, String label, VoidCallback onTap, bool highlight})> _quickNavItems() {
+    return [
+      (
+        icon: Icons.emoji_events_outlined,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Рейтинг',
+          AppLanguage.en: 'Ranks',
+          AppLanguage.de: 'Rang',
+        }),
+        onTap: () => _openScreen(const LeaderboardScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.lightbulb_outline_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Техники',
+          AppLanguage.en: 'Tips',
+          AppLanguage.de: 'Tipps',
+        }),
+        onTap: () => _openScreen(const TechniquesScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.flash_on_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Дуэли',
+          AppLanguage.en: 'Duels',
+          AppLanguage.de: 'Duelle',
+        }),
+        onTap: () => _openScreen(const DuelLobbyScreen()),
+        highlight: true,
+      ),
+      (
+        icon: Icons.bar_chart_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Статистика',
+          AppLanguage.en: 'Stats',
+          AppLanguage.de: 'Statistik',
+        }),
+        onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen()),
+        highlight: false,
+      ),
+      (
+        icon: Icons.task_alt_rounded,
+        label: AppTexts.translate(const {
+          AppLanguage.ru: 'Квесты',
+          AppLanguage.en: 'Quests',
+          AppLanguage.de: 'Quests',
+        }),
+        onTap: () => _openScreen(const QuestsScreen()),
+        highlight: false,
+      ),
+    ];
+  }
+
+  Widget _mobileNavTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color onSurface,
+    required Color accent,
+    bool highlight = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: withUiTap(onTap),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 68,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          decoration: BoxDecoration(
+            color: highlight ? accent.withOpacity(0.1) : appPalette.value.surface.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: highlight ? accent.withOpacity(0.45) : appPalette.value.border.withOpacity(0.35),
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: highlight ? accent : onSurface.withOpacity(0.78),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: onSurface.withOpacity(0.72),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.1,
+                ),
+              ),
+            ],
+          ),
         ),
-        _quickNavButton(
-            icon: Icons.bar_chart_rounded,
-            onTap: () => _openScreen(const premium_stats.PremiumStatisticsScreen())),
-        _quickNavButton(
-            icon: Icons.task_alt_rounded,
-            onTap: () => _openScreen(const QuestsScreen())),
-      ],
+      ),
     );
   }
 
@@ -614,6 +1096,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
       builder: (context, questState, _) {
         final dailyItems = <Widget>[];
         final visibleCount = min(3, min(questState.dailyQuests.length, questState.dailyStatuses.length));
+        var completedCount = 0;
+        for (int i = 0; i < visibleCount; i++) {
+          if (questState.dailyStatuses[i].isCompleted) completedCount++;
+        }
+        final progressValue = visibleCount == 0 ? 0.0 : completedCount / visibleCount;
 
         for (int i = 0; i < visibleCount; i++) {
           final quest = questState.dailyQuests[i];
@@ -661,6 +1148,31 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
               children: [
                 Row(
                   children: [
+                    SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            value: visibleCount == 0 ? null : progressValue,
+                            strokeWidth: 2.5,
+                            backgroundColor: onSurface.withOpacity(0.08),
+                            valueColor: AlwaysStoppedAnimation<Color>(accent),
+                          ),
+                          if (visibleCount > 0)
+                            Text(
+                              '$completedCount/$visibleCount',
+                              style: TextStyle(
+                                color: onSurface.withOpacity(0.65),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Text(
                       AppTexts.translate(const {
                         AppLanguage.ru: 'ЕЖЕДНЕВНЫЕ',
@@ -880,110 +1392,34 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
     );
   }
 
-
-  Widget _quickNavButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    bool highlight = false,
-  }) {
-    final accent = appAccentColor.value;
-    return GestureDetector(
-      onTap: withUiTap(onTap),
-      child: Container(
-        width: 58,
-        height: 58,
-        decoration: BoxDecoration(
-          color: highlight ? accent.withOpacity(0.10) : appPalette.value.surface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: highlight
-                ? accent.withOpacity(0.55)
-                : appPalette.value.border.withOpacity(0.35),
-          ),
-          boxShadow: highlight
-              ? [BoxShadow(color: accent.withOpacity(0.18), blurRadius: 14, spreadRadius: 0.5)]
-              : null,
-        ),
-        child: Icon(
-          icon,
-          color: highlight ? accent : accent.withOpacity(0.9),
-          size: highlight ? 23 : 22,
-        ),
-      ),
-    );
-  }
-
   Widget _buildXpProgressHeader(Color onSurface) {
     return ValueListenableBuilder(
       valueListenable: ProgressService.instance.progress,
       builder: (context, p, _) {
         final accent = appAccentColor.value;
         final ratio = p.xpToNextLevel <= 0 ? 0.0 : (p.currentLevelXp / p.xpToNextLevel).clamp(0.0, 1.0);
-        final levelTitle = ProgressService.instance.getLevelTitleLabel().toUpperCase();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: accent.withOpacity(0.45)),
-                    color: accent.withOpacity(0.08),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.psychology_alt_outlined, size: 13, color: accent.withOpacity(0.95)),
-                      const SizedBox(width: 6),
-                      Text(
-                        levelTitle,
-                        style: TextStyle(
-                          color: accent.withOpacity(0.95),
-                          fontSize: 10,
-                          letterSpacing: 1.8,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(22),
-                    onTap: () => _openStreakCalendar(appPalette.value, p.streak),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: accent.withOpacity(0.45)),
-                        color: accent.withOpacity(0.16),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.local_fire_department_rounded, size: 14, color: accent),
-                          const SizedBox(width: 6),
-                          Text('${p.streak}', style: TextStyle(color: onSurface.withOpacity(0.95), fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
                 Text(
-                  levelTitle,
-                  style: TextStyle(color: onSurface.withOpacity(0.58), fontSize: 11, letterSpacing: 1.7),
+                  AppTexts.translate(const {
+                    AppLanguage.ru: 'ПРОГРЕСС УРОВНЯ',
+                    AppLanguage.en: 'LEVEL PROGRESS',
+                    AppLanguage.de: 'LEVEL-FORTSCHRITT',
+                  }),
+                  style: TextStyle(
+                    color: onSurface.withOpacity(0.42),
+                    fontSize: 9,
+                    letterSpacing: 1.8,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   '${p.currentLevelXp} / ${p.xpToNextLevel} XP',
-                  style: TextStyle(color: onSurface.withOpacity(0.58), fontSize: 12, letterSpacing: 0.5),
+                  style: TextStyle(color: onSurface.withOpacity(0.58), fontSize: 11, letterSpacing: 0.4),
                 ),
               ],
             ),
@@ -997,7 +1433,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> with TickerProviderStat
                   borderRadius: BorderRadius.circular(10),
                   child: Stack(
                     children: [
-                      Container(height: 7, color: Colors.white.withOpacity(0.09)),
+                      Container(height: 7, color: onSurface.withOpacity(0.08)),
                       FractionallySizedBox(
                         widthFactor: v,
                         child: Container(

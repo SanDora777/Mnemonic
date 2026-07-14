@@ -45,6 +45,7 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
   bool _isOverviewOpen = false;
   int? _selectedFromSource;
   late final PageController _pageController;
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -64,11 +65,17 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     }
     
     _autoAdvanceFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!widget.isResultsMode && trainerKeyboardShortcutsEnabled(context)) {
+        _keyboardFocusNode.requestFocus();
+      }
+    });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -201,6 +208,35 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     }
   }
 
+  bool _handleRecallKeyDown(KeyDownEvent event) {
+    if (widget.isResultsMode || trainerShortcutBlockedByTextField()) return false;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.pageDown) {
+      _onArrowNav(1);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.pageUp) {
+      _onArrowNav(-1);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      _finishRecall();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
+      final img = _placements[_focusedPosition];
+      if (img != null) {
+        setState(() {
+          _usedImageIndices.remove(img);
+          _placements.remove(_focusedPosition);
+        });
+        uiTapClick(UiClickSound.soft);
+      }
+      return true;
+    }
+    return false;
+  }
+
   Widget _buildIndexBadge({
     required String label,
     required Color textColor,
@@ -230,51 +266,110 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     final total = widget.imageUrls.length;
     final totalPages = (total / _pageSize).ceil();
     final palette = appPalette.value;
+    final wide = isTrainerWideLayout(context) && !widget.isResultsMode;
 
-    return Scaffold(
-      backgroundColor: palette.background,
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildHeader(totalPages),
-              if (widget.isResultsMode) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-                  child: _buildResultsDashboard(),
-                ),
-              ],
-              Expanded(
-                child: Column(
-                  children: [
-                    widget.isResultsMode
-                        ? Expanded(
-                            child: PageView.builder(
-                              controller: _pageController,
-                              onPageChanged: (p) => setState(() => _currentPage = p),
-                              itemCount: totalPages,
-                              itemBuilder: (context, pageIdx) => _buildTargetTable(pageIdx),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 280,
-                            child: PageView.builder(
-                              controller: _pageController,
-                              onPageChanged: (p) => setState(() => _currentPage = p),
-                              itemCount: totalPages,
-                              itemBuilder: (context, pageIdx) => _buildTargetTable(pageIdx),
-                            ),
-                          ),
-                    _buildSourceDeck(),
-                  ],
-                ),
+    return KeyboardListener(
+      focusNode: _keyboardFocusNode,
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent) _handleRecallKeyDown(event);
+      },
+      child: Scaffold(
+        backgroundColor: palette.background,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: trainerRecallMaxWidth(context)),
+              child: Stack(
+                children: [
+                  wide
+                      ? _buildWideLayout(totalPages)
+                      : _buildNarrowLayout(totalPages),
+                  if (_isOverviewOpen) _buildOverviewOverlay(),
+                ],
               ),
-              _buildBottomBar(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNarrowLayout(int totalPages) {
+    return Column(
+      children: [
+        _buildHeader(totalPages),
+        if (widget.isResultsMode) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+            child: _buildResultsDashboard(),
+          ),
+        ],
+        Expanded(
+          child: Column(
+            children: [
+              widget.isResultsMode
+                  ? Expanded(
+                      child: PageView.builder(
+                        controller: _pageController,
+                        onPageChanged: (p) => setState(() => _currentPage = p),
+                        itemCount: totalPages,
+                        itemBuilder: (context, pageIdx) => _buildTargetTable(pageIdx),
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final h = min(280.0, constraints.maxHeight * 0.44).clamp(200.0, 280.0);
+                        return SizedBox(
+                          height: h,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            onPageChanged: (p) => setState(() => _currentPage = p),
+                            itemCount: totalPages,
+                            itemBuilder: (context, pageIdx) => _buildTargetTable(pageIdx),
+                          ),
+                        );
+                      },
+                    ),
+              _buildSourceDeck(expanded: true),
             ],
           ),
-          if (_isOverviewOpen) _buildOverviewOverlay(),
-        ],
-      ),
+        ),
+        _buildBottomBar(),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout(int totalPages) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 11,
+          child: Column(
+            children: [
+              _buildHeader(totalPages, compact: true),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (p) => setState(() => _currentPage = p),
+                  itemCount: totalPages,
+                  itemBuilder: (context, pageIdx) => _buildTargetTable(pageIdx, compact: true),
+                ),
+              ),
+              _buildBottomBar(compact: true),
+            ],
+          ),
+        ),
+        Container(
+          width: 1,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          color: appPalette.value.border.withOpacity(0.2),
+        ),
+        Expanded(
+          flex: 9,
+          child: _buildSourceDeck(expanded: true, sidePanel: true),
+        ),
+      ],
     );
   }
 
@@ -365,10 +460,10 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     );
   }
 
-  Widget _buildHeader(int totalPages) {
+  Widget _buildHeader(int totalPages, {bool compact = false}) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 50, 20, 10),
+      padding: EdgeInsets.fromLTRB(20, compact ? 8 : 12, 20, compact ? 6 : 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -384,7 +479,11 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
               const SizedBox(height: 4),
               Text(
                 AppTexts.get('element_stats_slot_value').replaceAll('{n}', '${_focusedPosition + 1}'),
-                style: TextStyle(color: onSurface, fontSize: 22, fontWeight: FontWeight.w200),
+                style: TextStyle(
+                  color: onSurface,
+                  fontSize: compact ? 18 : 22,
+                  fontWeight: FontWeight.w200,
+                ),
               ),
             ],
           ),
@@ -425,106 +524,112 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     );
   }
 
-  Widget _buildTargetTable(int pageIdx) {
+  Widget _buildTargetTable(int pageIdx, {bool compact = false}) {
     final start = pageIdx * _pageSize;
     final end = min(start + _pageSize, widget.imageUrls.length);
     final palette = appPalette.value;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 1.0, // ????????
-        ),
-        itemCount: end - start,
-        itemBuilder: (context, index) {
-          final pos = start + index;
-          final isFocused = _focusedPosition == pos;
-          final imgIdx = _placements[pos];
-          
-          Color borderColor = isFocused ? appAccentColor.value : palette.border.withOpacity(0.15);
-          if (widget.isResultsMode && imgIdx != null) {
-            borderColor = (imgIdx == pos) ? const Color(0xFF00E676) : const Color(0xFFFF1744);
-          }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final spacing = compact ? 10.0 : 14.0;
+        final radius = compact ? 18.0 : 24.0;
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 16, vertical: compact ? 8 : 12),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: 1.0,
+            ),
+            itemCount: end - start,
+            itemBuilder: (context, index) {
+              final pos = start + index;
+              final isFocused = _focusedPosition == pos;
+              final imgIdx = _placements[pos];
+              
+              Color borderColor = isFocused ? appAccentColor.value : palette.border.withOpacity(0.15);
+              if (widget.isResultsMode && imgIdx != null) {
+                borderColor = (imgIdx == pos) ? const Color(0xFF00E676) : const Color(0xFFFF1744);
+              }
 
-          return DragTarget<int>(
-            onWillAcceptWithDetails: (details) => !widget.isResultsMode,
-            onAcceptWithDetails: (details) => _onImagePlaced(pos, details.data),
-            builder: (context, candidateData, rejectedData) {
-              final isHovering = candidateData.isNotEmpty;
-              return GestureDetector(
-                onTap: () => _onSlotTap(pos),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: isFocused 
-                        ? appAccentColor.value.withOpacity(0.08) 
-                        : (isHovering ? appAccentColor.value.withOpacity(0.15) : palette.card.withOpacity(0.5)),
-                    borderRadius: BorderRadius.circular(24), // ????? ???????? ??? ?? ????
-                    border: Border.all(
-                      color: isHovering ? appAccentColor.value : borderColor, 
-                      width: (isFocused || isHovering) ? 2 : 1,
-                    ),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (imgIdx != null)
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
-                          child: Image.network(
-                            widget.imageUrls[imgIdx],
-                            fit: BoxFit.cover,
-                            cacheWidth: 250,
-                          ),
-                        ),
-                      Positioned(
-                        top: 8,
-                        left: 8,
-                        child: _buildIndexBadge(
-                          label: "${pos + 1}",
-                          textColor: imgIdx != null ? Colors.white : onSurface.withOpacity(0.76),
-                          backgroundColor: imgIdx != null
-                              ? Colors.black.withOpacity(0.52)
-                              : palette.surface.withOpacity(0.94),
-                          fontSize: 10.5,
+              return DragTarget<int>(
+                onWillAcceptWithDetails: (details) => !widget.isResultsMode,
+                onAcceptWithDetails: (details) => _onImagePlaced(pos, details.data),
+                builder: (context, candidateData, rejectedData) {
+                  final isHovering = candidateData.isNotEmpty;
+                  return GestureDetector(
+                    onTap: () => _onSlotTap(pos),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      decoration: BoxDecoration(
+                        color: isFocused 
+                            ? appAccentColor.value.withOpacity(0.08) 
+                            : (isHovering ? appAccentColor.value.withOpacity(0.15) : palette.card.withOpacity(0.5)),
+                        borderRadius: BorderRadius.circular(radius),
+                        border: Border.all(
+                          color: isHovering ? appAccentColor.value : borderColor, 
+                          width: (isFocused || isHovering) ? 2 : 1,
                         ),
                       ),
-                      if (widget.isResultsMode && imgIdx != null && imgIdx != pos)
-                        Positioned(
-                          bottom: 0, right: 0, left: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.8),
-                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (imgIdx != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(radius - 2),
+                              child: Image.network(
+                                widget.imageUrls[imgIdx],
+                                fit: BoxFit.cover,
+                                cacheWidth: compact ? 200 : 250,
+                              ),
                             ),
-                            child: Text(
-                              "#${imgIdx + 1}",
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Color(0xFF00E676), fontSize: 10, fontWeight: FontWeight.bold),
+                          Positioned(
+                            top: compact ? 6 : 8,
+                            left: compact ? 6 : 8,
+                            child: _buildIndexBadge(
+                              label: "${pos + 1}",
+                              textColor: imgIdx != null ? Colors.white : onSurface.withOpacity(0.76),
+                              backgroundColor: imgIdx != null
+                                  ? Colors.black.withOpacity(0.52)
+                                  : palette.surface.withOpacity(0.94),
+                              fontSize: compact ? 9.5 : 10.5,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ),
+                          if (widget.isResultsMode && imgIdx != null && imgIdx != pos)
+                            Positioned(
+                              bottom: 0, right: 0, left: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.8),
+                                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius - 2)),
+                                ),
+                                child: Text(
+                                  "#${imgIdx + 1}",
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Color(0xFF00E676), fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSourceDeck() {
+  Widget _buildSourceDeck({required bool expanded, bool sidePanel = false}) {
     final palette = appPalette.value;
     final onSurface = Theme.of(context).colorScheme.onSurface;
 
@@ -533,196 +638,238 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
     // ????????? ?????? ???????????????? ???????????
     final availableIndices = widget.shuffledIndices.where((idx) => !_usedImageIndices.contains(idx)).toList();
 
-    return Expanded(
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Row(
-              children: [
-                Text(AppTexts.get('image_recall_deck_label'), style: TextStyle(color: onSurface.withOpacity(0.2), fontSize: 10, letterSpacing: 3, fontWeight: FontWeight.w900)),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _showAllImagesPicker(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: appAccentColor.value.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.filter_rounded, size: 12, color: appAccentColor.value),
-                        const SizedBox(width: 4),
-                        Text(AppTexts.get('image_recall_all_short'), style: TextStyle(color: appAccentColor.value, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
+    final deck = Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: sidePanel ? 16 : 24, vertical: sidePanel ? 6 : 8),
+          child: Row(
+            children: [
+              Text(
+                AppTexts.get('image_recall_deck_label'),
+                style: TextStyle(
+                  color: onSurface.withOpacity(0.2),
+                  fontSize: sidePanel ? 9 : 10,
+                  letterSpacing: 3,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _showAllImagesPicker(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: appAccentColor.value.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.filter_rounded, size: 12, color: appAccentColor.value),
+                      const SizedBox(width: 4),
+                      Text(AppTexts.get('image_recall_all_short'), style: TextStyle(color: appAccentColor.value, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text("${_usedImageIndices.length} / ${widget.imageUrls.length}", 
-                  style: TextStyle(color: onSurface.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              physics: const BouncingScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.0,
               ),
-              itemCount: availableIndices.length,
-              itemBuilder: (context, index) {
-                final imgIdx = availableIndices[index];
-                
-                final imageWidget = Container(
-                  decoration: BoxDecoration(
-                    color: palette.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _selectedFromSource == imgIdx ? appAccentColor.value : palette.border.withOpacity(0.1),
-                      width: _selectedFromSource == imgIdx ? 2 : 1,
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Image.network(
-                    widget.imageUrls[imgIdx],
-                    fit: BoxFit.cover,
-                    cacheWidth: 200,
-                  ),
-                );
-
-                return Draggable<int>(
-                  data: imgIdx,
-                  feedback: Material(
-                    color: Colors.transparent,
-                    child: Transform.scale(
-                      scale: 1.1,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)],
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.network(widget.imageUrls[imgIdx], fit: BoxFit.cover),
+              const SizedBox(width: 12),
+              Text(
+                "${_usedImageIndices.length} / ${widget.imageUrls.length}",
+                style: TextStyle(color: onSurface.withOpacity(0.4), fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final cols = imageRecallSourceColumns(constraints.maxWidth);
+              return GridView.builder(
+                padding: EdgeInsets.symmetric(horizontal: sidePanel ? 12 : 16, vertical: 8),
+                physics: const BouncingScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisSpacing: sidePanel ? 8 : 10,
+                  crossAxisSpacing: sidePanel ? 8 : 10,
+                  childAspectRatio: 1.0,
+                ),
+                itemCount: availableIndices.length,
+                itemBuilder: (context, index) {
+                  final imgIdx = availableIndices[index];
+                  
+                  final imageWidget = Container(
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: BorderRadius.circular(sidePanel ? 12 : 16),
+                      border: Border.all(
+                        color: _selectedFromSource == imgIdx ? appAccentColor.value : palette.border.withOpacity(0.1),
+                        width: _selectedFromSource == imgIdx ? 2 : 1,
                       ),
                     ),
-                  ),
-                  childWhenDragging: Opacity(opacity: 0.3, child: imageWidget),
-                  onDragStarted: () => uiTapClick(UiClickSound.soft),
-                  child: GestureDetector(
-                    onTap: () => _onSourceTap(imgIdx),
-                    child: imageWidget,
-                  ),
-                );
-              },
-            ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      widget.imageUrls[imgIdx],
+                      fit: BoxFit.cover,
+                      cacheWidth: sidePanel ? 160 : 200,
+                    ),
+                  );
+
+                  return Draggable<int>(
+                    data: imgIdx,
+                    feedback: Material(
+                      color: Colors.transparent,
+                      child: Transform.scale(
+                        scale: 1.05,
+                        child: Container(
+                          width: sidePanel ? 64 : 80,
+                          height: sidePanel ? 64 : 80,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20)],
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.network(widget.imageUrls[imgIdx], fit: BoxFit.cover),
+                        ),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(opacity: 0.3, child: imageWidget),
+                    onDragStarted: () => uiTapClick(UiClickSound.soft),
+                    child: GestureDetector(
+                      onTap: () => _onSourceTap(imgIdx),
+                      child: imageWidget,
+                    ),
+                  );
+                },
+              );
+            },
           ),
-        ],
-      ),
+        ),
+      ],
     );
+
+    if (expanded) return Expanded(child: deck);
+    return deck;
   }
 
   void _showAllImagesPicker() {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    showModalBottomSheet(
+    final wide = isTrainerWideLayout(context);
+    showTrainerAdaptivePicker(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: appPalette.value.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        maxChildSize: 0.9,
-        minChildSize: 0.5,
-        expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: onSurface.withOpacity(0.1), borderRadius: BorderRadius.circular(2)),
+      builder: (sheetContext) {
+        Widget buildGrid({ScrollController? scrollController, required int cols}) {
+          return GridView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: cols,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(AppTexts.get('image_recall_all_images'), style: TextStyle(color: onSurface, fontSize: 18, fontWeight: FontWeight.w200, letterSpacing: 1)),
-                  Text("${widget.imageUrls.length}", style: TextStyle(color: appAccentColor.value, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: GridView.builder(
-                controller: scrollController,
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                ),
-                itemCount: widget.imageUrls.length,
-                itemBuilder: (context, idx) {
-                  // ??????????: ?????????? ? ?????????? ??????? 0, 1, 2...
-                  final displayIdx = idx; 
-                  final isUsed = _usedImageIndices.contains(displayIdx);
-                  return GestureDetector(
-                    onTap: () {
-                      if (!isUsed) {
-                        _onImagePlaced(_focusedPosition, displayIdx);
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isUsed ? Colors.transparent : onSurface.withOpacity(0.1)),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Opacity(
-                            opacity: isUsed ? 0.2 : 1.0,
-                            child: Image.network(widget.imageUrls[displayIdx], fit: BoxFit.cover, cacheWidth: 300),
-                          ),
-                          if (isUsed) Center(child: Icon(Icons.check_circle_outline_rounded, color: onSurface.withOpacity(0.3))),
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: _buildIndexBadge(
-                              label: "${displayIdx + 1}",
-                              textColor: Colors.white,
-                              backgroundColor: Colors.black.withOpacity(0.52),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
+            itemCount: widget.imageUrls.length,
+            itemBuilder: (context, idx) {
+              final displayIdx = idx;
+              final isUsed = _usedImageIndices.contains(displayIdx);
+              return GestureDetector(
+                onTap: () {
+                  if (!isUsed) {
+                    _onImagePlaced(_focusedPosition, displayIdx);
+                    Navigator.pop(sheetContext);
+                  }
                 },
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: isUsed ? Colors.transparent : onSurface.withOpacity(0.1)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Opacity(
+                        opacity: isUsed ? 0.2 : 1.0,
+                        child: Image.network(widget.imageUrls[displayIdx], fit: BoxFit.cover, cacheWidth: 300),
+                      ),
+                      if (isUsed) Center(child: Icon(Icons.check_circle_outline_rounded, color: onSurface.withOpacity(0.3))),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: _buildIndexBadge(
+                          label: "${displayIdx + 1}",
+                          textColor: Colors.white,
+                          backgroundColor: Colors.black.withOpacity(0.52),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
+
+        if (wide) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      AppTexts.get('image_recall_all_images'),
+                      style: TextStyle(color: onSurface, fontSize: 16, fontWeight: FontWeight.w300),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close, color: onSurface.withOpacity(0.7)),
+                      onPressed: () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
+              Expanded(child: buildGrid(cols: 5)),
+            ],
+          );
+        }
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.9,
+          maxChildSize: 0.9,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (context, scrollController) => Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: onSurface.withOpacity(0.1), borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(AppTexts.get('image_recall_all_images'), style: TextStyle(color: onSurface, fontSize: 18, fontWeight: FontWeight.w200, letterSpacing: 1)),
+                    Text("${widget.imageUrls.length}", style: TextStyle(color: appAccentColor.value, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(child: buildGrid(scrollController: scrollController, cols: 3)),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar({bool compact = false}) {
     final palette = appPalette.value;
     final total = widget.imageUrls.length;
     final totalPages = (total / _pageSize).ceil();
     
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      padding: EdgeInsets.fromLTRB(24, 0, 24, compact ? 10 : 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -730,6 +877,7 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
             Icons.arrow_back_ios_new_rounded, 
             () => _onArrowNav(-1),
             onLongPress: () => _onArrowNav(-1, isLongPress: true),
+            compact: compact,
           ),
           Row(
             children: List.generate(totalPages, (i) => AnimatedContainer(
@@ -747,13 +895,14 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
             Icons.arrow_forward_ios_rounded, 
             () => _onArrowNav(1),
             onLongPress: () => _onArrowNav(1, isLongPress: true),
+            compact: compact,
           ),
         ],
       ),
     );
   }
 
-  Widget _navButton(IconData icon, VoidCallback onTap, {VoidCallback? onLongPress}) {
+  Widget _navButton(IconData icon, VoidCallback onTap, {VoidCallback? onLongPress, bool compact = false}) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
     final palette = appPalette.value;
     return GestureDetector(
@@ -765,7 +914,7 @@ class _MnemonicImageRecallScreenState extends State<MnemonicImageRecallScreen> w
           color: palette.surface,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: onSurface, size: 28),
+        child: Icon(icon, color: onSurface, size: compact ? 22 : 28),
       ),
     );
   }

@@ -18,6 +18,85 @@ bool isWebDesktopLayout(BuildContext context, [double? width]) {
   return w >= 520;
 }
 
+/// Wide trainer layout: native desktop or web on a laptop-sized viewport.
+bool isTrainerWideLayout(BuildContext context, [double? width]) {
+  if (defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.macOS ||
+      defaultTargetPlatform == TargetPlatform.linux) {
+    final w = width ?? MediaQuery.sizeOf(context).width;
+    return w >= 520;
+  }
+  return isWebDesktopLayout(context, width);
+}
+
+double trainerRecallMaxWidth(BuildContext context) {
+  final w = kIsWeb ? webViewportWidth(context) : MediaQuery.sizeOf(context).width;
+  if (!isTrainerWideLayout(context, w)) return double.infinity;
+  if (w < 900) return 720;
+  if (w < 1280) return 860;
+  return 960;
+}
+
+({double width, double height}) memorizerImageSize(
+  BuildContext context, {
+  required bool horizontal,
+}) {
+  final wide = isTrainerWideLayout(context);
+  if (horizontal) {
+    return wide ? (width: 160, height: 100) : (width: 200, height: 130);
+  }
+  return wide ? (width: 220, height: 140) : (width: 300, height: 190);
+}
+
+({double width, double height}) memorizerCardSize(BuildContext context) {
+  final wide = isTrainerWideLayout(context);
+  return wide ? (width: 108, height: 154) : (width: 140, height: 200);
+}
+
+int imageRecallSourceColumns(double maxWidth) {
+  if (maxWidth >= 900) return 8;
+  if (maxWidth >= 720) return 6;
+  if (maxWidth >= 520) return 5;
+  return 4;
+}
+
+Future<T?> showTrainerAdaptivePicker<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool scrollControlled = true,
+}) {
+  if (isTrainerWideLayout(context)) {
+    return showDialog<T>(
+      context: context,
+      builder: (ctx) {
+        final palette = appPalette.value;
+        final size = MediaQuery.sizeOf(ctx);
+        return Dialog(
+          backgroundColor: palette.background,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: min(640.0, size.width * 0.88),
+              maxHeight: size.height * 0.88,
+            ),
+            child: builder(ctx),
+          ),
+        );
+      },
+    );
+  }
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: scrollControlled,
+    backgroundColor: appPalette.value.background,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    builder: builder,
+  );
+}
+
 double webMainMenuMaxWidth(double viewportWidth) {
   if (!kIsWeb || viewportWidth < 520) return double.infinity;
   if (viewportWidth >= 1280) return 720;
@@ -126,7 +205,7 @@ bool trainerKeyboardShortcutsEnabled(BuildContext context) {
     return true;
   }
   if (kIsWeb) {
-    return MediaQuery.sizeOf(context).width >= 600;
+    return isWebDesktopLayout(context);
   }
   return false;
 }
@@ -144,12 +223,8 @@ double webDesktopContentMaxWidth(
   double medium = 760,
   double wide = 960,
 }) {
-  if (kIsWeb) return double.infinity;
-  final isWidePlatform = defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux;
-  if (!isWidePlatform) return double.infinity;
-  final w = MediaQuery.sizeOf(context).width;
+  if (!isTrainerWideLayout(context)) return double.infinity;
+  final w = kIsWeb ? webViewportWidth(context) : MediaQuery.sizeOf(context).width;
   if (w < 600) return narrow;
   if (w < 1024) return medium;
   if (w < 1440) return wide;
@@ -175,23 +250,19 @@ Widget webDesktopFrame({
   required Widget child,
   double? maxWidth,
 }) {
-  if (kIsWeb) {
-    final pad = webDesktopHorizontalPadding(context);
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: pad),
-      child: child,
-    );
-  }
   final cap = maxWidth ?? webDesktopContentMaxWidth(context);
-  final isWidePlatform = defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.linux;
-  if (!isWidePlatform) return child;
+  if (!isTrainerWideLayout(context) || cap == double.infinity) {
+    return child;
+  }
+  final pad = webDesktopHorizontalPadding(context);
   return Align(
     alignment: Alignment.topCenter,
-    child: ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: cap),
-      child: child,
+    child: Padding(
+      padding: EdgeInsets.symmetric(horizontal: pad),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: cap),
+        child: child,
+      ),
     ),
   );
 }

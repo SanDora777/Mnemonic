@@ -29,6 +29,7 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
   int _focusedIndex = 0;
   String _selectedSuit = 'h';
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _keyboardFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -37,6 +38,18 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
       final initial = i < widget.initialSelections.length ? widget.initialSelections[i].trim() : '';
       _selections.add(initial.isEmpty ? null : initial);
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!widget.isResultsMode && trainerKeyboardShortcutsEnabled(context)) {
+        _keyboardFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _keyboardFocusNode.dispose();
+    super.dispose();
   }
 
   void _onCardSelect(String rank) {
@@ -59,13 +72,62 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
   void _scrollToFocused() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
+        final wide = isTrainerWideLayout(context);
+        final step = wide ? 76.0 : 90.0;
         _scrollController.animateTo(
-          max(0, _focusedIndex * 90.0 - 100.0),
+          max(0, _focusedIndex * step - 100.0),
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
         );
       }
     });
+  }
+
+  bool _handleRecallKeyDown(KeyDownEvent event) {
+    if (widget.isResultsMode || trainerShortcutBlockedByTextField()) return false;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight) {
+      setState(() => _focusedIndex = min(_focusedIndex + 1, _selections.length - 1));
+      _scrollToFocused();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      setState(() => _focusedIndex = max(_focusedIndex - 1, 0));
+      _scrollToFocused();
+      return true;
+    }
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+      widget.onCompleted(_selections);
+      return true;
+    }
+    if (key == LogicalKeyboardKey.backspace || key == LogicalKeyboardKey.delete) {
+      setState(() {
+        _selections[_focusedIndex] = null;
+        if (_focusedIndex > 0) _focusedIndex--;
+      });
+      _scrollToFocused();
+      return true;
+    }
+
+    final label = event.logicalKey.keyLabel.toLowerCase();
+    if (label.length == 1) {
+      const suits = {'h', 'd', 'c', 's'};
+      if (suits.contains(label)) {
+        setState(() => _selectedSuit = label);
+        return true;
+      }
+      const rankMap = {
+        'a': 'a', '2': '2', '3': '3', '4': '4', '5': '5', '6': '6',
+        '7': '7', '8': '8', '9': '9', '0': '10',
+        'j': 'j', 'q': 'q', 'k': 'k',
+      };
+      final rank = rankMap[label];
+      if (rank != null) {
+        _onCardSelect(rank);
+        return true;
+      }
+    }
+    return false;
   }
 
   Widget _buildSlotIndexLabel(int index, Color onSurface, Color surface) {
@@ -95,123 +157,147 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
       builder: (context, _) {
         final palette = appPalette.value;
         final onSurface = Theme.of(context).colorScheme.onSurface;
+        final wide = isTrainerWideLayout(context);
+        final cardSize = wide ? (w: 68.0, h: 102.0) : (w: 80.0, h: 120.0);
+        final rankBtn = wide ? 42.0 : 50.0;
+        final suitIcon = wide ? 22.0 : 28.0;
 
-        return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Column(
-        children: [
-          const SizedBox(height: 20),
-          if (widget.isResultsMode) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-              child: _buildResultsDashboard(onSurface),
-            ),
-          ],
-          // ?????? ????????? ????
-          SizedBox(
-            height: 180,
-            child: ListView.builder(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _selections.length,
-              itemBuilder: (context, index) {
-                final card = _selections[index];
-                final isFocused = _focusedIndex == index && !widget.isResultsMode;
-                final isCorrect = widget.isResultsMode && _selections[index] == widget.correctData[index];
-                final isWrong = widget.isResultsMode && _selections[index] != widget.correctData[index];
-
-                return GestureDetector(
-                  onTap: () => setState(() => _focusedIndex = index),
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      children: [
-                        _buildSlotIndexLabel(index, onSurface, palette.surface),
-                        const SizedBox(height: 8),
-                        _buildSmallCard(
-                          card, 
-                          isFocused: isFocused,
-                          isCorrect: isCorrect,
-                          isWrong: isWrong,
-                          correctCard: widget.isResultsMode ? widget.correctData[index] : null,
+        return KeyboardListener(
+          focusNode: _keyboardFocusNode,
+          onKeyEvent: (event) {
+            if (event is KeyDownEvent) _handleRecallKeyDown(event);
+          },
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: trainerRecallMaxWidth(context)),
+                  child: Column(
+                    children: [
+                      SizedBox(height: wide ? 8 : 20),
+                      if (widget.isResultsMode) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                          child: _buildResultsDashboard(onSurface),
                         ),
                       ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          
-          const Spacer(),
+                      SizedBox(
+                        height: wide ? 150 : 180,
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: _selections.length,
+                          itemBuilder: (context, index) {
+                            final card = _selections[index];
+                            final isFocused = _focusedIndex == index && !widget.isResultsMode;
+                            final isCorrect = widget.isResultsMode && _selections[index] == widget.correctData[index];
+                            final isWrong = widget.isResultsMode && _selections[index] != widget.correctData[index];
 
-          if (!widget.isResultsMode) ...[
-            // ???????? ?????
-             Row(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: ['h', 'd', 'c', 's'].map((s) {
-                 final isSel = _selectedSuit == s;
-                 final isRed = s == 'h' || s == 'd';
-                 final tileBg = isSel ? appAccentColor.value.withOpacity(0.15) : palette.surface;
-                 final iconColor = isRed
-                     ? (isSel ? _redSuitColor : _redSuitColor.withOpacity(0.72))
-                     : (isSel ? _blackSuitColor() : _blackSuitColor().withOpacity(0.78));
-                 return GestureDetector(
-                   onTap: () => setState(() => _selectedSuit = s),
-                   child: AnimatedContainer(
-                     duration: const Duration(milliseconds: 200),
-                     margin: const EdgeInsets.symmetric(horizontal: 10),
-                     padding: const EdgeInsets.all(12),
-                     decoration: BoxDecoration(
-                       color: tileBg,
-                       borderRadius: BorderRadius.circular(14),
-                       border: Border.all(color: isSel ? appAccentColor.value : palette.border.withOpacity(0.3)),
-                     ),
-                     child: PlayingCardSuitIcon(
-                       suitLetter: s,
-                       color: iconColor,
-                       size: 28,
-                       cardSurfaceColor: tileBg,
-                     ),
-                   ),
-                 );
-               }).toList(),
-             ),
-            const SizedBox(height: 30),
-            // ???????? ?????
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: ['a', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'j', 'q', 'k'].map((r) {
-                  return GestureDetector(
-                    onTap: () => _onCardSelect(r),
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: palette.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: palette.border.withOpacity(0.3)),
+                            return GestureDetector(
+                              onTap: () => setState(() => _focusedIndex = index),
+                              child: Padding(
+                                padding: EdgeInsets.only(right: wide ? 10 : 12),
+                                child: Column(
+                                  children: [
+                                    _buildSlotIndexLabel(index, onSurface, palette.surface),
+                                    const SizedBox(height: 8),
+                                    _buildSmallCard(
+                                      card,
+                                      width: cardSize.w,
+                                      height: cardSize.h,
+                                      isFocused: isFocused,
+                                      isCorrect: isCorrect,
+                                      isWrong: isWrong,
+                                      correctCard: widget.isResultsMode ? widget.correctData[index] : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      child: Center(
-                        child: Text(r.toUpperCase(), style: TextStyle(color: onSurface, fontSize: 18, fontWeight: FontWeight.w300)),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      if (wide && !widget.isResultsMode)
+                        const SizedBox(height: 16)
+                      else if (!widget.isResultsMode)
+                        const Spacer(),
+                      if (!widget.isResultsMode) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: ['h', 'd', 'c', 's'].map((s) {
+                            final isSel = _selectedSuit == s;
+                            final isRed = s == 'h' || s == 'd';
+                            final tileBg = isSel ? appAccentColor.value.withOpacity(0.15) : palette.surface;
+                            final iconColor = isRed
+                                ? (isSel ? _redSuitColor : _redSuitColor.withOpacity(0.72))
+                                : (isSel ? _blackSuitColor() : _blackSuitColor().withOpacity(0.78));
+                            return GestureDetector(
+                              onTap: () => setState(() => _selectedSuit = s),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: EdgeInsets.symmetric(horizontal: wide ? 6 : 10),
+                                padding: EdgeInsets.all(wide ? 9 : 12),
+                                decoration: BoxDecoration(
+                                  color: tileBg,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: isSel ? appAccentColor.value : palette.border.withOpacity(0.3)),
+                                ),
+                                child: PlayingCardSuitIcon(
+                                  suitLetter: s,
+                                  color: iconColor,
+                                  size: suitIcon,
+                                  cardSurfaceColor: tileBg,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        SizedBox(height: wide ? 16 : 30),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Wrap(
+                            spacing: wide ? 6 : 8,
+                            runSpacing: wide ? 6 : 8,
+                            alignment: WrapAlignment.center,
+                            children: ['a', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'j', 'q', 'k'].map((r) {
+                              return GestureDetector(
+                                onTap: () => _onCardSelect(r),
+                                child: Container(
+                                  width: rankBtn,
+                                  height: rankBtn,
+                                  decoration: BoxDecoration(
+                                    color: palette.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: palette.border.withOpacity(0.3)),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      r.toUpperCase(),
+                                      style: TextStyle(
+                                        color: onSurface,
+                                        fontSize: wide ? 15 : 18,
+                                        fontWeight: FontWeight.w300,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        SizedBox(height: wide ? 16 : 40),
+                        _buildActionBtn(AppTexts.get('finish'), () => widget.onCompleted(_selections)),
+                      ],
+                      SizedBox(height: wide ? 8 : 20),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 40),
-            _buildActionBtn(AppTexts.get('finish'), () => widget.onCompleted(_selections)),
-          ],
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -279,7 +365,15 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
     );
   }
 
-  Widget _buildSmallCard(String? code, {bool isFocused = false, bool isCorrect = false, bool isWrong = false, String? correctCard}) {
+  Widget _buildSmallCard(
+    String? code, {
+    double width = 80,
+    double height = 120,
+    bool isFocused = false,
+    bool isCorrect = false,
+    bool isWrong = false,
+    String? correctCard,
+  }) {
     final palette = appPalette.value;
     final onSurface = Theme.of(context).colorScheme.onSurface;
     
@@ -289,8 +383,8 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
 
     if (code == null) {
       return Container(
-        width: 80,
-        height: 120,
+        width: width,
+        height: height,
         decoration: BoxDecoration(
           color: palette.card.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
@@ -303,8 +397,8 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
     final suitLetter = parsePlayingCardSuitLetter(code);
     if (suitLetter == null) {
       return Container(
-        width: 80,
-        height: 120,
+        width: width,
+        height: height,
         decoration: BoxDecoration(
           color: palette.surface,
           borderRadius: BorderRadius.circular(12),
@@ -323,8 +417,8 @@ class _MnemonicCardRecallScreenState extends State<MnemonicCardRecallScreen> {
     final shadows = playingCardGlyphShadows(color, palette.surface);
 
     return Container(
-      width: 80,
-      height: 120,
+      width: width,
+      height: height,
       decoration: BoxDecoration(
         color: palette.surface,
         borderRadius: BorderRadius.circular(12),

@@ -833,6 +833,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
   bool _isChecking = false;
   bool _isPreparingImages = false;
   final ScrollController _memorizerScrollController = ScrollController();
+  final FocusNode _trainerShortcutFocusNode =
+      FocusNode(debugLabel: 'trainerShortcuts');
   _NumbersSubMode _numbersSubMode = _NumbersSubMode.standard;
 
   bool get _isMatrixMode => _numbersSubMode == _NumbersSubMode.matrix;
@@ -1178,6 +1180,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
       f.dispose();
     }
     _memorizerScrollController.dispose();
+    _trainerShortcutFocusNode.dispose();
     super.dispose();
   }
 
@@ -2396,7 +2399,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
     unawaited(CloudSyncService.instance.uploadTrainingHistoryEntry(entry));
   }
 
-  void _requestTrainerKeyboardFocus() {}
+  void _requestTrainerKeyboardFocus() {
+    if (!mounted) return;
+    if (_trainerShortcutFocusNode.canRequestFocus &&
+        !_trainerShortcutFocusNode.hasFocus) {
+      _trainerShortcutFocusNode.requestFocus();
+    }
+  }
 
   TrainerShortcutPhase _shortcutPhase() {
     if (_isMemorizing) return TrainerShortcutPhase.memorize;
@@ -2593,8 +2602,12 @@ class _TrainingScreenState extends State<TrainingScreen> {
       bodyStack = TrainerShortcutScope(
         phase: _shortcutPhase(),
         autofocus: true,
+        focusNode: _trainerShortcutFocusNode,
         callbacks: TrainerShortcutCallbacks(
-          enabled: keyboardEnabled && !_isPreparingImages && !_isChecking,
+          enabled: keyboardEnabled &&
+              !_isPreparingImages &&
+              !_isChecking &&
+              (_isSettingsMode || _isMemorizing),
           scrollController: _memorizerScrollController,
           onStartTraining: () {
             if (_isPiMode) {
@@ -2874,7 +2887,13 @@ class _TrainingScreenState extends State<TrainingScreen> {
 
   Widget _buildSettings({Key? key}) {
     final onSurface = Theme.of(context).colorScheme.onSurface;
-    return SingleChildScrollView(
+    return GestureDetector(
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+        _requestTrainerKeyboardFocus();
+      },
+      behavior: HitTestBehavior.translucent,
+      child: SingleChildScrollView(
       key: key,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 30.0),
@@ -3005,6 +3024,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -4516,11 +4536,14 @@ class _TrainingScreenState extends State<TrainingScreen> {
           Listenable.merge([blackSuitAlwaysWhite, appAccentColor, appPalette]),
       builder: (context, _) {
         final palette = appPalette.value;
+        final size = memorizerCardSize(context);
+        final cardW = size.width;
+        final cardH = size.height;
         final suitLetter = parsePlayingCardSuitLetter(cardCode);
         if (suitLetter == null) {
           return Container(
-            width: 140,
-            height: 200,
+            width: cardW,
+            height: cardH,
             decoration: BoxDecoration(
               color: palette.surface,
               borderRadius: BorderRadius.circular(20),
@@ -4553,17 +4576,20 @@ class _TrainingScreenState extends State<TrainingScreen> {
         );
         final glyphShadows =
             playingCardGlyphShadows(suitColor, palette.surface);
+        final rankFont = cardW * 0.186;
+        final cornerSuit = cardW * 0.157;
+        final centerSuit = cardW * 0.886;
         final rankStyle = TextStyle(
           color: suitColor,
-          fontSize: 26,
+          fontSize: rankFont,
           fontWeight: FontWeight.w800,
           height: 1,
           shadows: glyphShadows,
         );
 
         return Container(
-          width: 140,
-          height: 200,
+          width: cardW,
+          height: cardH,
           decoration: BoxDecoration(
             color: palette.surface,
             borderRadius: BorderRadius.circular(20),
@@ -4584,14 +4610,14 @@ class _TrainingScreenState extends State<TrainingScreen> {
                   child: PlayingCardSuitIcon(
                     suitLetter: suitLetter,
                     color: suitColor,
-                    size: 124,
+                    size: centerSuit,
                     cardSurfaceColor: palette.surface,
                   ),
                 ),
               ),
               Positioned(
-                top: 14,
-                left: 14,
+                top: cardH * 0.07,
+                left: cardW * 0.1,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4601,15 +4627,15 @@ class _TrainingScreenState extends State<TrainingScreen> {
                     PlayingCardSuitIcon(
                       suitLetter: suitLetter,
                       color: suitColor,
-                      size: 22,
+                      size: cornerSuit,
                       cardSurfaceColor: palette.surface,
                     ),
                   ],
                 ),
               ),
               Positioned(
-                bottom: 14,
-                right: 14,
+                bottom: cardH * 0.07,
+                right: cardW * 0.1,
                 child: RotatedBox(
                   quarterTurns: 2,
                   child: Column(
@@ -4621,7 +4647,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
                       PlayingCardSuitIcon(
                         suitLetter: suitLetter,
                         color: suitColor,
-                        size: 22,
+                        size: cornerSuit,
                         cardSurfaceColor: palette.surface,
                       ),
                     ],
@@ -4691,8 +4717,9 @@ class _TrainingScreenState extends State<TrainingScreen> {
   }) {
     final item = _data[index];
     if (_selectedMode == TrainingMode.images) {
-      final w = horizontal ? 200.0 : 300.0;
-      final h = horizontal ? 130.0 : 190.0;
+      final imgSize = memorizerImageSize(context, horizontal: horizontal);
+      final w = imgSize.width;
+      final h = imgSize.height;
       return Container(
         width: w,
         height: h,
@@ -4714,7 +4741,8 @@ class _TrainingScreenState extends State<TrainingScreen> {
     }
     if (_selectedMode == TrainingMode.faces) {
       final person = _decodeFaceEntry(item);
-      final size = horizontal ? 160.0 : 240.0;
+      final wide = isTrainerWideLayout(context);
+      final size = horizontal ? (wide ? 130.0 : 160.0) : (wide ? 190.0 : 240.0);
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -4741,7 +4769,7 @@ class _TrainingScreenState extends State<TrainingScreen> {
               person.name.toUpperCase(),
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 32,
+                fontSize: wide ? 24 : 32,
                 fontWeight: FontWeight.w300,
                 letterSpacing: 2,
                 color: onSurface.withOpacity(0.92),

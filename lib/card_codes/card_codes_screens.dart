@@ -17,7 +17,8 @@ import '../recovered_app.dart'
         AppTexts,
         appAccentColor,
         appLanguage,
-        appPalette;
+        appPalette,
+        isTrainerWideLayout;
 import '../training_record_rules.dart';
 import 'card_codes_deck.dart';
 import 'card_codes_service.dart';
@@ -82,85 +83,103 @@ class _CardCodesScreenState extends State<CardCodesScreen> {
   Future<void> _openEdit(String cardCode) async {
     final lang = appLanguage.value;
     final controller = TextEditingController(text: _images[cardCode] ?? '');
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final palette = appPalette.value;
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
-                decoration: BoxDecoration(
-                  color: palette.background,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: palette.border.withOpacity(0.4)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PlayingCardFace(
-                      cardCode: cardCode,
-                      width: 100,
-                      height: 140,
-                      animateIn: true,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      maxLines: 2,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: AppTexts.get('card_codes_edit_hint'),
-                        filled: true,
-                        fillColor: palette.surface,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(
-                            color: palette.border.withOpacity(0.35),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        if ((_images[cardCode] ?? '').isNotEmpty)
-                          TextButton(
-                            onPressed: () async {
-                              await _svc.saveImage(lang, cardCode, '');
-                              if (ctx.mounted) Navigator.pop(ctx, true);
-                            },
-                            child: Text(_t(const {
-                              AppLanguage.ru: 'Очистить',
-                              AppLanguage.en: 'Clear',
-                              AppLanguage.de: 'Löschen',
-                            })),
-                          ),
-                        const Spacer(),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: Text(_t(const {
-                            AppLanguage.ru: 'Сохранить',
-                            AppLanguage.en: 'Save',
-                            AppLanguage.de: 'Speichern',
-                          })),
-                        ),
-                      ],
-                    ),
-                  ],
+    final wide = isTrainerWideLayout(context);
+
+    Widget buildEditor(BuildContext ctx) {
+      final palette = appPalette.value;
+      return Container(
+        padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
+        decoration: BoxDecoration(
+          color: palette.background,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: palette.border.withOpacity(0.4)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PlayingCardFace(
+              cardCode: cardCode,
+              width: wide ? 88 : 100,
+              height: wide ? 123 : 140,
+              animateIn: true,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: AppTexts.get('card_codes_edit_hint'),
+                filled: true,
+                fillColor: palette.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(
+                    color: palette.border.withOpacity(0.35),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    );
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                if ((_images[cardCode] ?? '').isNotEmpty)
+                  TextButton(
+                    onPressed: () async {
+                      await _svc.saveImage(lang, cardCode, '');
+                      if (ctx.mounted) Navigator.pop(ctx, true);
+                    },
+                    child: Text(_t(const {
+                      AppLanguage.ru: 'Очистить',
+                      AppLanguage.en: 'Clear',
+                      AppLanguage.de: 'Löschen',
+                    })),
+                  ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(_t(const {
+                    AppLanguage.ru: 'Сохранить',
+                    AppLanguage.en: 'Save',
+                    AppLanguage.de: 'Speichern',
+                  })),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    final saved = wide
+        ? await showDialog<bool>(
+            context: context,
+            builder: (ctx) => Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: buildEditor(ctx),
+              ),
+            ),
+          )
+        : await showModalBottomSheet<bool>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) {
+              return Padding(
+                padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                    child: buildEditor(ctx),
+                  ),
+                ),
+              );
+            },
+          );
     if (saved != true || !mounted) {
       controller.dispose();
       return;

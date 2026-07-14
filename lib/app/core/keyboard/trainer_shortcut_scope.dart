@@ -86,12 +86,14 @@ class TrainerShortcutScope extends StatelessWidget {
     required this.callbacks,
     required this.child,
     this.autofocus = true,
+    this.focusNode,
   });
 
   final TrainerShortcutPhase phase;
   final TrainerShortcutCallbacks callbacks;
   final Widget child;
   final bool autofocus;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +106,7 @@ class TrainerShortcutScope extends StatelessWidget {
           child: Actions(
             actions: _buildActions(callbacks),
             child: FocusableActionDetector(
+              focusNode: focusNode,
               autofocus: autofocus && callbacks.enabled,
               child: child,
             ),
